@@ -1,0 +1,6 @@
+
+State Machine - |rs_encoder|state
+Name state.IDLE state.PARITY state.MSG 
+state.IDLE 0 0 0 
+state.MSG 1 0 1 
+state.PARITY 1 1 0 

@@ -1,0 +1,6 @@
+srun --x11 --pty bash
+module load xcelium/
+make clean
+make create_filelist
+make sim
+make wave

@@ -1,0 +1,39 @@
+###############################################################################
+# Set SystemVerilog / Verilog language diff rules
+###############################################################################
+
+*.sv     text diff=systemverilog
+*.svh    text diff=systemverilog
+*.v      text diff=verilog
+*.vh     text diff=verilog
+
+###############################################################################
+# Treat simulator output as binary to avoid huge diffs
+###############################################################################
+
+# Verilator
+*.vcd    binary
+*.fst    binary
+*.vvp    binary
+
+# Xcelium
+*.trn    binary
+*.dsn    binary
+*.ts     binary
+*.key    binary
+
+# Waveform directories
+waves.shm/*  binary
+
+###############################################################################
+# Normalize line endings (required for Windows + EDA)
+###############################################################################
+
+* text=auto eol=lf
+
+###############################################################################
+# Keep Quartus project files as text (human-readable)
+###############################################################################
+
+*.qsf text
+*.qpf text

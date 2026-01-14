@@ -1,0 +1,97 @@
+###############################################################################
+# HDL Simulation Outputs (Verilator, Xcelium, VCS)
+###############################################################################
+
+# Verilator
+10_sim/verilator/obj_dir/
+10_sim/verilator/*.vcd
+10_sim/verilator/*.log
+10_sim/verilator/*.sv (generated sim result)
+10_sim/verilator/V*
+10_sim/verilator/*.d
+10_sim/verilator/*.o
+10_sim/verilator/*__ALL.*
+
+# Xcelium
+10_sim/xcelium/xcelium.d/
+10_sim/xcelium/*.key
+10_sim/xcelium/*.log
+10_sim/xcelium/*.history
+10_sim/xcelium/*.ts
+10_sim/xcelium/wave.vcd
+10_sim/xcelium/waves.shm/
+10_sim/xcelium/.simvision/
+
+# Generic simulation outputs
+*.vcd
+*.vvp
+*.fst
+*.vpd
+*.wlf
+*.log
+*.out
+*.tmp
+
+
+###############################################################################
+# Quartus FPGA Build Artifacts (KEEP source only)
+###############################################################################
+
+# Large Quartus build databases
+20_syn/quartus/top/db/
+20_syn/quartus/top/incremental_db/
+20_syn/quartus/top/output_files/
+
+# Quartus backup files
+20_syn/quartus/top/*.qmsg
+20_syn/quartus/top/*.rpt
+20_syn/quartus/top/*.summary
+20_syn/quartus/top/*.smsg
+20_syn/quartus/top/*.pin
+20_syn/quartus/top/*.sof
+20_syn/quartus/top/*.done
+
+# Keep only .qpf and .qsf (project files) and 00_src
+!20_syn/quartus/top/top.qpf
+!20_syn/quartus/top/top.qsf
+
+
+###############################################################################
+# OS & Editor files
+###############################################################################
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# macOS
+.DS_Store
+
+# VSCode
+.vscode/
+.history/
+
+# Temp files
+*.bak
+*.old
+*.orig
+*.$*
+
+# Documents
+*.pdf
+*.docx
+*.doc
+*.pptx
+*.drawio
+*.one
+
+###############################################################################
+# Misc
+###############################################################################
+
+# Python
+__pycache__/
+*.pyc
+
+# Draw.io backups
+*.drawio.bkp

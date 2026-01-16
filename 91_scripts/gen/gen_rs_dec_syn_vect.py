@@ -24,8 +24,9 @@ def main():
     rx_codeword = tx_codeword.copy()
     
     # Gây lỗi tại vị trí đầu tiên (Symbol 543) và vị trí thứ 10
-    rx_codeword[0] += 123  # Lỗi ngẫu nhiên
-    rx_codeword[10] += 456
+    # Ép kiểu số nguyên sang phần tử GF trước khi cộng
+    rx_codeword[0] += gf(123) 
+    rx_codeword[10] += gf(456)
     
     print(f"Injecting errors at index 0 (val={rx_codeword[0]}) and 10 (val={rx_codeword[10]})")
 

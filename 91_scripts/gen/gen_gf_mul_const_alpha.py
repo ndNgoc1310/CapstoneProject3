@@ -26,7 +26,7 @@ def generate_syndrome_mults():
     
     # 2. Định nghĩa đường dẫn file đầu ra
     # Lưu ý: Tôi đặt file này vào thư mục rtl/fec chung hoặc thư mục con tùy bạn
-    output_dir = "../00_rtl/fec"
+    output_dir = "../00_rtl/fec/common"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         

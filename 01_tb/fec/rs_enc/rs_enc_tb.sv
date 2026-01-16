@@ -36,8 +36,11 @@ module rs_enc_tb;
         // Mở database wave.shm
         $shm_open("wave.shm");
         
-        // Chọn các tín hiệu cần ghi (AS = All Signals trong toàn bộ hierarchy)
-        $shm_probe("AS");
+        // A (All): Tất cả tín hiệu.
+        // C (Cells): Các kết nối trong module con. 
+        // M (Memories): Mảng, memory.
+        // T (Transactions): Ghi lại các giao dịch (nếu có).
+        $shm_probe("ACMT"); 
     end
 
     initial begin

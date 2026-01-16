@@ -63,6 +63,6 @@ def generate_rtl_constants(file_path):
 
 if __name__ == "__main__":
     # Đường dẫn xuất file RTL vào thư mục 01_rtl
-    output_file = "../00_rtl/fec/gf_mul_constants.sv"
+    output_file = "../00_rtl/fec/common/gf_mul_const_g.sv"
     generate_rtl_constants(output_file)
     print(f"Successfully generated {output_file}")

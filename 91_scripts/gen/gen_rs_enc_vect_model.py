@@ -20,8 +20,8 @@ def main():
     codeword = rs.rs_encode(msg, 30)
     
     # 3. Lưu vào file
-    save_hex(msg, "../10_sim/fec/input.hex")
-    save_hex(codeword, "../10_sim/fec/expected.hex")
+    save_hex(msg, "../10_sim/fec/rs_enc/rs_enc_input.hex")
+    save_hex(codeword, "../10_sim/fec/rs_enc/rs_enc_output_exp.hex")
     print("Đã tạo xong input.hex và expected.hex")
 
 if __name__ == "__main__":

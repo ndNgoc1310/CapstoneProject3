@@ -1,0 +1,63 @@
+
+#
+# Mnemonic Maps
+#
+mmap new  -reuse -name {Boolean as Logic} -radix %b -contents {{%c=FALSE -edgepriority 1 -shape low}
+{%c=TRUE -edgepriority 1 -shape high}}
+mmap new  -reuse -name {Example Map} -radix %x -contents {{%b=11???? -bgcolor orange -label REG:%x -linecolor yellow -shape bus}
+{%x=1F -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=2C -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=* -label %x -linecolor gray -shape bus}}
+
+array unset createdGroup
+array set createdGroup {}
+set id [waveform add -signals [subst  {
+	{[format {rs_encoder_tb.clk}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_encoder_tb.rst_n}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_encoder_tb.ready}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_encoder_tb.i}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_encoder_tb.sop}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_encoder_tb.valid_in}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_encoder_tb.data_in[9:0]}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_encoder_tb.valid_out}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {rs_encoder_tb.data_out[9:0]}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {rs_encoder_tb.out_cnt}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {rs_encoder_tb.match_count}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {rs_encoder_tb.error_count}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+
+waveform xview limits 0 250ns

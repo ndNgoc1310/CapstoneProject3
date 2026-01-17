@@ -1,2 +1,4 @@
+# Write the commands below to the file ~/.bashrc to automatically mount the shared folder(s).You can use vim ~/.bashrc to open it.
+
 mkdir -p ~/CapstoneProject3
 vmhgfs-fuse .host:/CapstoneProject3 ~/CapstoneProject3 -o umask=0033

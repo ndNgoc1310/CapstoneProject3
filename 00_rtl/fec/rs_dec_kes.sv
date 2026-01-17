@@ -23,46 +23,59 @@ module rs_dec_kes (
     logic [9:0] omg_reg [15:0];
     logic [9:0] a_reg   [15:0];
     
-    logic [9:0] syn_shift [29:0]; // Shift register cho Syndromes
+    logic [9:0] syn_shift   [29:0];   // Shift register cho Syndromes
+    logic [9:0] syn_window  [15:0];
     
     logic [9:0] delta, gamma;
     logic [4:0] k_cnt;  // Đếm bước lặp (0..29)
     logic [4:0] L;      // Độ dài hiệu dụng hiện tại
 
     // --- Signals for Computation ---
-    logic [9:0] delta_terms [15:0]; // Kết quả nhân từng phần tử để tính Delta
-    logic [9:0] delta_sum;          // Tổng XOR (Delta)
+    logic [9:0] del_term [15:0];  // Kết quả nhân từng phần tử để tính Delta
     
-    logic [9:0] term_lam [15:0];    // gamma * lambda
-    logic [9:0] term_b   [15:0];    // delta * b
-    logic [9:0] lam_next [15:0];
+    logic [9:0] lam_term    [15:0];    // gamma * lambda
+    logic [9:0] del_term_b  [15:0];    // delta * b
+    logic [9:0] lam_next    [15:0];
     
-    logic [9:0] term_omg [15:0];    // gamma * omega
-    logic [9:0] term_a   [15:0];    // delta * a
-    logic [9:0] omg_next [15:0];
+    logic [9:0] omg_term    [15:0];    // gamma * omega
+    logic [9:0] del_term_a  [15:0];    // delta * a
+    logic [9:0] omg_next    [15:0];
 
     // ============================================================
     // 1. DELTA CALCULATION UNIT (Dot Product)
     // Delta = Sum(Lambda[i] * Syndrome[current - i])
     // Với cấu trúc Shift Register Syndrome, Syndrome[i] tương ứng S_{k-i}
     // ============================================================
+    always_comb begin
+        // Phần tử 0 là Syndrome hiện tại S_k (lấy trực tiếp từ input dựa vào k_cnt)
+        syn_window[0] = syndromes_in[k_cnt]; 
+        
+        // Các phần tử tiếp theo là lịch sử: index j ứng với S_{k-j}
+        // syn_shift[0] lưu S_{k-1}
+        // syn_shift[j-1] lưu S_{k-j}
+        for (int j = 1; j <= T; j++) begin
+            syn_window[j] = syn_shift[j-1];
+        end
+    end
+    
     genvar i;
     generate
         for (i = 0; i <= T; i++) begin : gen_delta_mul
             // Syndromes dịch chuyển sao cho syn_shift[i] luôn khớp với lam_reg[i]
+            // Nhân Lambda[i] với S[k-i]
             gf_mul u_mul_delta (
                 .a(lam_reg[i]), 
-                .b(syn_shift[i]), 
-                .y(delta_terms[i])
+                .b(syn_window[i]), 
+                .y(del_term[i])
             );
         end
     endgenerate
 
-    // Cây XOR để cộng dồn delta_terms (Có thể viết loop cho gọn)
+    // Cây XOR để cộng dồn del_term (Có thể viết loop cho gọn)
     always_comb begin
-        delta_sum = 10'd0;
+        delta = 10'd0;
         for (int j = 0; j <= T; j++) begin
-            delta_sum = delta_sum ^ delta_terms[j];
+            delta = delta ^ del_term[j];
         end
     end
 
@@ -75,29 +88,29 @@ module rs_dec_kes (
     generate
         for (i = 0; i <= T; i++) begin : gen_update_mul
             // Tính gamma * lambda[i]
-            gf_mul u_mul_g_lam (.a(gamma), .b(lam_reg[i]), .y(term_lam[i]));
+            gf_mul u_mul_g_lam (.a(gamma), .b(lam_reg[i]), .y(lam_term[i]));
             
             // Tính delta * b[i-1] (Logic dịch: b[-1] = 0)
             // Lưu ý: Trong iBM, B được cập nhật trước đó hoặc song song.
             // Ở đây ta dùng b_reg cũ. b_shifted[i] = b_reg[i-1]
             logic [9:0] b_val;
             assign b_val = (i == 0) ? 10'd0 : b_reg[i-1];
-            gf_mul u_mul_d_b   (.a(delta), .b(b_val),      .y(term_b[i]));
+            gf_mul u_mul_d_b   (.a(delta), .b(b_val),      .y(del_term_b[i]));
 
             // Tương tự cho Omega
-            gf_mul u_mul_g_omg (.a(gamma), .b(omg_reg[i]), .y(term_omg[i]));
+            gf_mul u_mul_g_omg (.a(gamma), .b(omg_reg[i]), .y(omg_term[i]));
             
             logic [9:0] a_val;
             assign a_val = (i == 0) ? 10'd0 : a_reg[i-1];
-            gf_mul u_mul_d_a   (.a(delta), .b(a_val),      .y(term_a[i]));
+            gf_mul u_mul_d_a   (.a(delta), .b(a_val),      .y(del_term_a[i]));
         end
     endgenerate
 
     // Kết hợp kết quả cập nhật
     always_comb begin
         for (int j = 0; j <= T; j++) begin
-            lam_next[j] = term_lam[j] ^ term_b[j];
-            omg_next[j] = term_omg[j] ^ term_a[j];
+            lam_next[j] = lam_term[j] ^ del_term_b[j];
+            omg_next[j] = omg_term[j] ^ del_term_a[j];
         end
     end
 
@@ -126,7 +139,7 @@ module rs_dec_kes (
                         gamma <= 10'd1; // Gamma khởi tạo = 1
                         
                         // Load Syndromes
-                        for (int j=0; j<30; j++) syn_shift[j] <= syndromes_in[j];
+                        for (int j=0; j<K_STEPS; j++) syn_shift[j] <= 10'd0;
                         
                         // Init Polynomials
                         lam_reg[0] <= 10'd1; b_reg[0] <= 10'd1;
@@ -141,11 +154,11 @@ module rs_dec_kes (
                 end
 
                 CALC: begin
-                    // 1. Cập nhật Delta cho vòng lặp tiếp theo (hoặc dùng delta_sum hiện tại)
-                    // Ở đây delta_sum là combinatorial từ lam_reg và syn_shift HIỆN TẠI
+                    // 1. Cập nhật Delta cho vòng lặp tiếp theo (hoặc dùng delta hiện tại)
+                    // Ở đây delta là combinatorial từ lam_reg và syn_shift HIỆN TẠI
                     // Nên nó chính là delta_k
                     logic [9:0] d_curr;
-                    d_curr = delta_sum; 
+                    d_curr = delta; 
                     
                     // 2. Cập nhật Lambda và Omega
                     for (int j=0; j<=T; j++) begin
@@ -167,10 +180,10 @@ module rs_dec_kes (
                     end
                     else begin
                         // B và A dịch trái (x * B)
-                        // Trong kiến trúc này, ta giữ nguyên B, việc nhân x*B được xử lý ở logic "term_b"
+                        // Trong kiến trúc này, ta giữ nguyên B, việc nhân x*B được xử lý ở logic "del_term_b"
                         // bằng cách lấy b[i-1]. 
-                        // NHƯNG chờ đã: Logic term_b lấy b_reg[i-1], nghĩa là tự động dịch mỗi clock?
-                        // KHÔNG. Logic term_b dùng B ĐANG CÓ.
+                        // NHƯNG chờ đã: Logic del_term_b lấy b_reg[i-1], nghĩa là tự động dịch mỗi clock?
+                        // KHÔNG. Logic del_term_b dùng B ĐANG CÓ.
                         // Nếu ta không update B, B vẫn giữ nguyên.
                         // -> Ta cần logic dịch B thủ công nếu không thỏa điều kiện update.
                         
@@ -186,8 +199,8 @@ module rs_dec_kes (
                     end
 
                     // 4. Shift Syndromes (Chuẩn bị cho next step)
-                    for (int j=0; j<29; j++) syn_shift[j] <= syn_shift[j+1];
-                    syn_shift[29] <= 10'd0; // Chèn 0 vào cuối
+                    syn_shift[0] <= syndromes_in[k_cnt];
+                    for (int j=1; j<T; j++) syn_shift[j] <= syn_shift[j-1];
 
                     // 5. Loop control
                     if (k_cnt == K_STEPS - 1) begin

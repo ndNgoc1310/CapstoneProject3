@@ -33,7 +33,6 @@ def generate_full_multiplier():
             for j in range(10): # Bit của b
                 # Tính x^i * x^j = x^(i+j) mod P(x)
                 
-                # --- SỬA LỖI TẠI ĐÂY ---
                 if (i + j) < 10:
                     # Nếu bậc < 10, không cần modulo, bit bật là i+j
                     prod = 1 << (i + j) 

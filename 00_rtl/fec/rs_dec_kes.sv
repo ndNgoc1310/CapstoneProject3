@@ -34,11 +34,11 @@ module rs_dec_kes (
     logic [9:0] del_term [15:0];  // Kết quả nhân từng phần tử để tính Delta
     
     logic [9:0] lam_term    [15:0];    // gamma * lambda
-    logic [9:0] del_term_b  [15:0];    // delta * b
+    logic [9:0] lam_term_b  [15:0];    // delta * b
     logic [9:0] lam_next    [15:0];
     
     logic [9:0] omg_term    [15:0];    // gamma * omega
-    logic [9:0] del_term_a  [15:0];    // delta * a
+    logic [9:0] omg_term_a  [15:0];    // delta * a
     logic [9:0] omg_next    [15:0];
 
     // ============================================================
@@ -95,22 +95,22 @@ module rs_dec_kes (
             // Ở đây ta dùng b_reg cũ. b_shifted[i] = b_reg[i-1]
             logic [9:0] b_val;
             assign b_val = (i == 0) ? 10'd0 : b_reg[i-1];
-            gf_mul u_mul_d_b   (.a(delta), .b(b_val),      .y(del_term_b[i]));
+            gf_mul u_mul_d_b   (.a(delta), .b(b_val),      .y(lam_term_b[i]));
 
             // Tương tự cho Omega
             gf_mul u_mul_g_omg (.a(gamma), .b(omg_reg[i]), .y(omg_term[i]));
             
             logic [9:0] a_val;
             assign a_val = (i == 0) ? 10'd0 : a_reg[i-1];
-            gf_mul u_mul_d_a   (.a(delta), .b(a_val),      .y(del_term_a[i]));
+            gf_mul u_mul_d_a   (.a(delta), .b(a_val),      .y(omg_term_a[i]));
         end
     endgenerate
 
     // Kết hợp kết quả cập nhật
     always_comb begin
         for (int j = 0; j <= T; j++) begin
-            lam_next[j] = lam_term[j] ^ del_term_b[j];
-            omg_next[j] = omg_term[j] ^ del_term_a[j];
+            lam_next[j] = lam_term[j] ^ lam_term_b[j];
+            omg_next[j] = omg_term[j] ^ omg_term_a[j];
         end
     end
 
@@ -180,10 +180,10 @@ module rs_dec_kes (
                     end
                     else begin
                         // B và A dịch trái (x * B)
-                        // Trong kiến trúc này, ta giữ nguyên B, việc nhân x*B được xử lý ở logic "del_term_b"
+                        // Trong kiến trúc này, ta giữ nguyên B, việc nhân x*B được xử lý ở logic "lam_term_b"
                         // bằng cách lấy b[i-1]. 
-                        // NHƯNG chờ đã: Logic del_term_b lấy b_reg[i-1], nghĩa là tự động dịch mỗi clock?
-                        // KHÔNG. Logic del_term_b dùng B ĐANG CÓ.
+                        // NHƯNG chờ đã: Logic lam_term_b lấy b_reg[i-1], nghĩa là tự động dịch mỗi clock?
+                        // KHÔNG. Logic lam_term_b dùng B ĐANG CÓ.
                         // Nếu ta không update B, B vẫn giữ nguyên.
                         // -> Ta cần logic dịch B thủ công nếu không thỏa điều kiện update.
                         

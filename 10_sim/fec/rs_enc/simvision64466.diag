@@ -1,0 +1,40 @@
+*** Message Type: info ***
+When: Thu Apr 09 12:37:42 EDT 2026
+SimVision started.
+Version: TOOL:  simvision(64)   20.09-s001
+User: admin
+Host: centos7
+Platform: Linux/x86_64/3.10.0-1160.108.1.el7.x86_64
+Started: Thu Apr 09 12:37:42 EDT 2026
+Command: /opt/cadence/XCELIUM2009/tools.lnx86/simvision/bin/64bit/simvision.exe waves.shm/
+Work Directory: /home/admin/CapstoneProject3/10_sim/fec/rs_enc
+ 
+*** Message Type: info ***
+When: Thu Apr 09 12:37:42 EDT 2026
+Create waveform window: "Waveform 1"
+ 
+*** Message Type: info ***
+When: Thu Apr 09 12:38:31 EDT 2026
+Create console window: "Console"
+ 
+*** Message Type: info ***
+When: Thu Apr 09 12:38:32 EDT 2026
+Create utility window: "Properties"
+ 
+*** Message Type: error ***
+When: Thu Apr 09 12:38:50 EDT 2026
+command ".connectDialog0-dialog.doInform" already exists in namespace "::ConnectDialog"
+    while executing
+"cwidgets::InfoBubble [namespace tail $this]-dialog.doInform"
+    (object "::.connectDialog0" method "::ConnectDialog::_doInform" body line 3)
+    invoked from within
+"::.connectDialog0 _doInform"
+    (in namespace inscope "::ConnectDialog" script line 1)
+    invoked from within
+"namespace inscope ::ConnectDialog {::.connectDialog0 _doInform}"
+    (command bound to event)
+ 
+*** Message Type: info ***
+When: Thu Apr 09 12:39:18 EDT 2026
+SimVision Exit.
+ 

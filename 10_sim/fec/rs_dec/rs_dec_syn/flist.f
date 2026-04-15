@@ -1,5 +1,9 @@
 +incdir+./../../../../00_rtl/fec
 
+./../../../../00_rtl/common/and_nb.sv
+./../../../../00_rtl/common/flop_r.sv
+./../../../../00_rtl/common/xor_nb.sv
+
 ./../../../../00_rtl/fec/common/gf_mul_const_alpha.sv
 
 ./../../../../00_rtl/fec/rs_dec_syn.sv

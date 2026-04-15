@@ -2,38 +2,49 @@
 
 // Reed-Solomon (544, 514) Encoder for GF(2^10)
 module rs_enc (
-    input  logic        clk,
-    input  logic        rst_n,
-    input  logic        sop,          // Đánh dấu bắt đầu một gói tin (Start of Packet)
-    input  logic        valid_in,     // Tín hiệu valid cho data_in. Data_in chỉ có giá trị khi tín hiệu này mức cao
-    input  logic [9:0]  data_in,      // Dữ liệu tin nhắn đầu vào 10-bit (tổng cộng 514 symbols)
+    input  logic        clk,        // Tín hiệu clock
+    input  logic        rst_n,      // Tín hiệu reset, active low
+    input  logic        sop_in,     // Đánh dấu bắt đầu một gói tin (Start of Packet)
+    input  logic        valid_in,   // Tín hiệu valid cho data_in. Data_in chỉ có giá trị khi tín hiệu này mức cao
+    input  logic [9:0]  data_in,    // Dữ liệu tin nhắn đầu vào 10-bit (tổng cộng 514 symbols)
     
-    output logic        valid_out,    // Tín hiệu valid cho data_out
-    output logic [9:0]  data_out,     // Dữ liệu Codeword ra (544 symbols) (bao gồm cả Message và Parity)
-    output logic        ready         // Sẵn sàng nhận gói tin mới (High ở trạng thái IDLE)
+    output logic        sop_out,    // Đánh dấu bắt đầu một gói tin ra (Start of Packet)
+    output logic        valid_out,  // Tín hiệu valid cho data_out
+    output logic [9:0]  data_out,   // Dữ liệu Codeword ra (544 symbols) (bao gồm cả Message và Parity)
+    output logic        ready,      // Sẵn sàng nhận gói tin mới (High ở trạng thái IDLE)
+    output logic        error       // Báo hiệu gói tin không hợp lệ
 );
 
     // --- Parameters ---
-    localparam K = 514;               // Số lượng symbols dữ liệu (message) trong một codeword
-    localparam N = 544;               // Tổng số lượng symbols sau khi mã hóa (Codeword = Message + Parity)
-    localparam NSYM = 30;             // Số lượng symbols kiểm soát lỗi (Parity symbols = N - K)
+    localparam K = 514;     // Số lượng symbols dữ liệu (message) trong một codeword
+    localparam N = 544;     // Tổng số lượng symbols sau khi mã hóa (Codeword = Message + Parity)
+    localparam NSYM = 30;   // Số lượng symbols kiểm soát lỗi (Parity symbols = N - K)
 
     // --- Internal Signals ---
-    logic [9:0] shift [NSYM-1:0];       // 30 thanh ghi LFSR lưu trữ trạng thái dư của phép chia (shift[0] đến shift[29])
+    logic [9:0] reg_in  [NSYM-1:0];         // Tín hiệu đầu vào cho các thanh ghi LFSR, được tính toán từ feedback và các hệ số g[i]
+    logic [9:0] reg_out [NSYM-1:0];         // Tín hiệu đầu ra từ các thanh ghi LFSR, lưu trữ trạng thái hiện tại của số dư trong quá trình chia đa thức
+    logic [NSYM-1:0] reg_en;                // Tín hiệu enable cho từng thanh ghi LFSR 
     logic [9:0] feedback_mul_gi [NSYM-1:0]; // Lưu kết quả sau khi nhân feedback với các hệ số g[i] từ 30 bộ nhân hằng số 
-    logic [9:0] feedback;               // Tín hiệu phản hồi dùng để tính toán số dư
-    logic [9:0] count;                  // Bộ đếm để quản lý số lượng symbol đã xử lý
-    
-
-    typedef enum logic [1:0] {IDLE, MSG, PARITY} state_t;   // Định nghĩa 3 trạng thái của máy FSM
-    state_t state;  // Biến lưu trạng thái hiện tại
+    logic [9:0] feedback;                   // Tín hiệu phản hồi dùng để tính toán số dư
+    logic control;                          // Biến điều khiển để xác định khi nào bắt đầu xuất parity sau khi đã xuất hết 514 symbols dữ liệu
 
     // --- 1. Feedback Logic ---
-    // Feedback được tạo ra bằng cách XOR data_in với hệ số bậc cao nhất của số dư hiện tại - thanh ghi bậc cao nhất (shift[29])
-    // Feedback chỉ hoạt động khi đang ở trạng thái nhận Message
-    assign feedback = ((state == MSG) || (state == IDLE && sop && valid_in)) ? (data_in ^ shift[NSYM-1]) : 10'd0;
+    // Feedback được tạo ra bằng cách XOR data_in với hệ số bậc cao nhất của số dư hiện tại - thanh ghi bậc cao nhất 
+    // rồi AND với control để chỉ hoạt động khi đang ở trạng thái nhận Message
+    logic [9:0] xor_feedback;
+    xor_nb #(.WIDTH(10)) XOR_feedback (
+        .a  (data_in),
+        .b  (reg_out[NSYM-1]),
+        .y  (xor_feedback)
+    );
 
-    // --- 2. Constant Multipliers Instantiation ---
+    and_nb #(.WIDTH(10)) AND_feedback (
+        .a  (xor_feedback),
+        .b  ({10{control}}), // Mở rộng control thành 10 bit để AND với xor_feedback
+        .y  (feedback)
+    );
+
+    // --- 2. GF Constant Multipliers Instantiation ---
     // Gọi 30 module nhân hằng số từ file gf_mul_constants.sv (đã gen từ Python) để tính toán song song
     // Mỗi module nhân feedback với một hệ số g_i của đa thức tạo mã g(x)
     gf_mul_const_g0  u0  (.a(feedback), .p(feedback_mul_gi[0])); 
@@ -67,100 +78,229 @@ module rs_enc (
     gf_mul_const_g28 u28 (.a(feedback), .p(feedback_mul_gi[28]));
     gf_mul_const_g29 u29 (.a(feedback), .p(feedback_mul_gi[29]));
 
-    // --- 3. LFSR Update and State Machine ---
-    always_ff @(posedge clk or negedge rst_n) begin
-        // Reset
-        if (!rst_n) begin
-            state <= IDLE;
-            count <= 10'd0;
-            ready <= 1'b0;
+    // --- 3. GF Addition for LFSR Update ---
+    // Cập nhật giá trị vào cho từng thanh ghi LFSR bằng cách XOR kết quả nhân hằng số với giá trị hiện tại của thanh ghi trước đó
+    genvar j;
+    generate
+        for (j = 0; j < NSYM; j++) begin : REG_IN_CALC
+            if (j == 0) begin : FIRST_REG
+                assign reg_in[0] = feedback_mul_gi[0];
+            end else begin : OTHER_REGS
+                xor_nb #(.WIDTH(10)) XOR_RegIn (
+                    .a(feedback_mul_gi[j]),
+                    .b(reg_out[j-1]),
+                    .y(reg_in[j])
+                );
+            end
+        end
+    endgenerate
 
-            // Cập nhật giá trị cho LFSRs
-            for (int j=0; j<NSYM; j++) shift[j] <= 10'd0; // Reset toàn bộ thanh ghi số dư
-        end 
-        
-        // FSM
-        else begin
-            case (state)
+    // --- 4. LFSR Update ---
+    // Sử dụng flop_r để lưu giá trị mới vào các thanh ghi LFSR ở mỗi chu kỳ đồng hồ
+    // Tín hiệu enable cho các thanh ghi LFSR được điều khiển bởi FSM
+    genvar i;
+    generate
+        for (i = 0; i < NSYM; i++) begin : LFSR_REGS
+            flop_r #(.WIDTH(10)) Reg (
+                .clk   (clk),
+                .rstn  (rst_n),
+                .en    (reg_en[i]),
+                .d     (reg_in[i]), 
+                .q     (reg_out[i]) 
+            );
+        end
+    endgenerate
 
-                // Hệ thống ở trạng thái nghỉ. Các thanh ghi shift[0] đến shift[29] được xóa về 0.
-                // Tín hiệu: ready = 1, valid_out = 0.
-                // Sự kiện kích hoạt: Khi sop (Start of Packet) và valid_in cùng lên mức cao, FSM chuyển sang trạng thái MSG.
+    // --- 5. Output Logic ---
+    // Dữ liệu data_out được xuất lần lượt: đầu tiên là 514 symbols dữ liệu (data_in), sau đó là 30 symbols parity (reg_out[0] đến reg_out[29])
+    mux_2 #(.WIDTH(10)) Output_Mux (
+        .d0 (reg_out[NSYM-1]),  // Chọn parity từ thanh ghi bậc cao nhất sau khi đã xuất hết 514 symbols dữ liệu
+        .d1 (data_in),          // Chọn data_in trong quá trình xuất 514 symbols dữ liệu
+        .s  (control),          // Chuyển sang parity sau khi đã xuất hết 514 symbols dữ liệu
+        .y  (data_out)          // Kết nối đầu ra data_out
+    );
+
+    // --- 6. FSM Control Logic ---
+    // FSM để điều khiển quá trình mã hóa, quản lý khi nào bắt đầu xuất parity và khi nào sẵn sàng nhận gói tin mới
+    rs_enc_ctrl Control_Unit (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .sop_in     (sop_in),
+        .valid_in   (valid_in),
+        .sop_out    (sop_out),
+        .valid_out  (valid_out),
+        .reg_en     (reg_en),
+        .control    (control),
+        .ready      (ready),
+        .error      (error)
+    );
+
+endmodule : rs_enc
+
+// --------------------------------------------------------------
+
+// Module điều khiển FSM cho RS Encoder
+module rs_enc_ctrl (
+    input  logic        clk,
+    input  logic        rst_n,
+    input  logic        sop_in,     // Đánh dấu bắt đầu một gói tin vào (Start of Packet)
+    input  logic        valid_in,   // Tín hiệu valid cho data_in, chỉ có giá trị khi đang nhận symbols dữ liệu (message)
+    output logic        sop_out,    // Đánh dấu bắt đầu một gói tin ra (Start of Packet), chỉ được đánh dấu ở symbol đầu tiên của message
+    output logic        valid_out,  // Tín hiệu valid cho data_out, có giá trị trong suốt quá trình xuất message và parity
+    output logic [29:0] reg_en,     // Tín hiệu enable cho 30 thanh ghi LFSR, được điều khiển bởi FSM để cập nhật trong quá trình nhận message và xuất parity
+    output logic        control,    // Biến điều khiển để xác định khi nào bắt đầu xuất parity sau khi đã xuất hết 514 symbols dữ liệu
+    output logic        ready,      // Sẵn sàng nhận gói tin mới, chỉ ở mức cao khi FSM ở trạng thái IDLE hoặc sau khi hoàn thành xuất codeword
+    output logic        error       // Báo hiệu gói tin không hợp lệ, được đặt ở mức cao khi nhận được tín hiệu không hợp lệ trong quá trình IDLE hoặc MSG, hoặc khi FSM rơi vào trạng thái không xác định
+);
+
+    // --- Parameters ---
+    localparam K = 514;     // Số lượng symbols dữ liệu (message) trong một codeword
+    localparam N = 544;     // Tổng số lượng symbols sau khi mã hóa (Codeword = Message + Parity)
+    localparam NSYM = 30;   // Số lượng symbols kiểm soát lỗi (Parity symbols = N - K)
+    
+    // --- Internal Signals ---
+    logic [9:0] current_count;  // Bộ đếm để theo dõi số lượng symbols đã nhận hoặc đã xuất, được sử dụng để xác định khi nào chuyển từ trạng thái MSG sang PARITY và khi nào hoàn thành xuất codeword
+    logic [9:0] next_count;     // Giá trị tiếp theo của bộ đếm, được tính toán trong logic output của FSM dựa trên trạng thái hiện tại và tín hiệu đầu vào
+
+    // Định nghĩa các trạng thái của FSM
+    typedef enum logic [2:0] {
+        IDLE,   // Trạng thái nghỉ, sẵn sàng nhận gói tin mới  
+        MSG1,   // Trạng thái nhận và xuất symbols dữ liệu (message), sop_out chỉ được đánh dấu ở symbol đầu tiên
+        MSG2,   // Trạng thái tiếp tục nhận và xuất symbols dữ liệu (message) sau symbol đầu tiên
+        PARITY, // Trạng thái xuất symbols parity sau khi đã xuất hết 514 symbols dữ liệu
+        DONE,   // Trạng thái xuất symbol parity cuối cùng và sẵn sàng nhận gói tin mới
+        ERROR   // Trạng thái lỗi khi nhận được tín hiệu không hợp lệ (ví dụ sop_in hoặc valid_in không đúng) trong quá trình IDLE hoặc MSG
+    } state_t;
+
+    state_t current_state, next_state;  // Trạng thái hiện tại và trạng thái tiếp theo của FSM
+
+    // --- 1. FSM State Output Logic ---
+    always_comb begin
+        case (current_state)
+            IDLE: begin
+                sop_out     = 1'b0;     // Không đánh dấu bắt đầu gói tin ra khi ở trạng thái IDLE 
+                valid_out   = 1'b0;     // Dữ liệu đầu ra không có giá trị khi ở trạng thái IDLE
+                reg_en      = '0;       // Không enable bất kỳ thanh ghi LFSR nào khi ở trạng thái IDLE
+                control     = 1'b0;     // Không quan tâm về control khi ở trạng thái IDLE, mặc định là 0
+                ready       = 1'b1;     // Sẵn sàng nhận gói tin mới khi ở trạng thái IDLE
+                next_count  = 10'd0;    // Reset bộ đếm khi ở trạng thái IDLE
+                error       = 1'b0;     // Không có lỗi khi ở trạng thái IDLE
+            end
+
+            MSG1: begin
+                sop_out     = 1'b1;     // Chỉ đánh dấu sop_out ở symbol đầu tiên của message
+                valid_out   = 1'b1;     // Dữ liệu đầu ra có giá trị trong suốt quá trình xuất message
+                reg_en      = '1;       // Enable tất cả các thanh ghi LFSR để cập nhật trong quá trình nhận message
+                control     = 1'b1;     // Bắt đầu với việc xuất message
+                ready       = 1'b0;     // Không sẵn sàng nhận dữ liệu mới khi đang xử lý message
+                next_count  = 10'd1;    // Bắt đầu đếm từ 1 khi nhận được symbol đầu tiên của message
+                error       = 1'b0;   
+            end
+
+            MSG2: begin
+                sop_out     = 1'b0;     // Chỉ đánh dấu sop_out ở symbol đầu tiên, sau đó hạ xuống
+                valid_out   = 1'b1;   
+                reg_en      = '1; 
+                control     = 1'b1;    
+                ready       = 1'b0;   
+                next_count  = current_count + 10'd1;    // Tiếp tục đếm số lượng symbols dữ liệu đã nhận
+                error       = 1'b0;   
+            end
+
+            PARITY: begin
+                sop_out     = 1'b0;    
+                valid_out   = 1'b1;   
+                reg_en      = '1; 
+                control     = 1'b0;     // Chuyển sang xuất parity
+                ready       = 1'b0;   
+                next_count  = current_count + 10'd1; 
+                error       = 1'b0;   
+            end
+
+            DONE: begin
+                sop_out     = 1'b0;    
+                valid_out   = 1'b1;   
+                reg_en      = '1;      
+                control     = 1'b0;     
+                ready       = 1'b1;     // Sẵn sàng nhận gói tin mới sau khi đã hoàn thành xuất codeword
+                next_count  = 10'd0; 
+                error       = 1'b0;   
+            end
+
+            ERROR: begin
+                sop_out     = 1'b0;    
+                valid_out   = 1'b0;     // Dữ liệu đầu ra không có giá trị khi ở trạng thái lỗi
+                reg_en      = '0;       // Không enable bất kỳ thanh ghi LFSR nào khi ở trạng thái lỗi
+                control     = 1'b0;     // Không quan tâm về control khi ở trạng thái lỗi, mặc định là 0
+                ready       = 1'b1;     // Sẵn sàng nhận gói tin mới khi ở trạng thái lỗi để có thể phục hồi sau lỗi
+                next_count  = 10'd0;    // Reset bộ đếm khi ở trạng thái lỗi
+                error       = 1'b1;     // Báo hiệu lỗi khi ở trạng thái lỗi
+            end
+
+            default: begin
+                sop_out     = 1'b0;    
+                valid_out   = 1'b0;   
+                reg_en      = '0; 
+                control     = 1'b0;    
+                ready       = 1'b1;   
+                next_count  = 10'd0; 
+                error       = 1'b1;     // Báo hiệu lỗi nếu FSM rơi vào trạng thái không xác định
+            end
+        endcase
+    end
+
+    // --- 2. FSM State Transition Logic ---
+    always_comb begin
+        case (current_state)
                 IDLE: begin
-                    if (sop && valid_in) begin  // Khi bắt đầu có gói tin
-                        state <= MSG;
-                        count <= 10'd1; // Tăng bộ đếm cho symbol đầu tiên
-                        ready <= 1'b0;  // Đang bận xử lý, hạ tín hiệu ready
-
-                        // Cập nhật giá trị cho LFSRs
-                        shift[0] <= feedback_mul_gi[0]; 
-                        for (int j=1; j<NSYM; j++) shift[j] <= shift[j-1] ^ feedback_mul_gi[j];
-                    end
-                    else begin
-                        count <= 10'd0;
-                        ready <= 1'b1;  // Sẵn sàng nhận dữ liệu
-                    end
+                    if (~(sop_in | valid_in))   next_state = IDLE;      // Ở lại trạng thái IDLE nếu chưa có gói tin mới
+                    else if (sop_in & valid_in) next_state = MSG1;      // Khi sop_in và valid_in cùng lên cao, chuyển sang trạng thái MSG để bắt đầu xử lý gói tin
+                    else                        next_state = ERROR;     // Nếu sop_in và valid_in không cùng lên cao, chuyển sang trạng thái lỗi ERROR
                 end
 
-                // Trong suốt 514 chu kỳ clock, dữ liệu data_in được đưa thẳng ra data_out (Pass-through).
-                // Cơ chế Feedback: Tại mỗi chu kỳ, một tín hiệu feedback được tính bằng data_in XOR shift[29].
-                // Cập nhật LFSR: Tín hiệu feedback được đưa qua 30 bộ nhân hằng số (g0, g1,..., g29). 
-                // Kết quả nhân được XOR với giá trị thanh ghi trước đó để cập nhật trạng thái mới cho LFSR.
-
-                // Khi bộ đếm count đạt giá trị K (514), toàn bộ nội dung của tin nhắn đã được xử lý.
-                // Kết quả: Lúc này, 30 thanh ghi từ shift[0] đến shift[29] đang chứa "số dư" của phép chia đa thức, đây chính là các parity symbols.
-                // Hành động: state chuyển sang PARITY, count reset về 0.
-                MSG: begin
-                    if (valid_in) begin
-                        // Message symbol 1-513
-                        if (count < K) begin
-                            count <= count + 10'd1; // Tăng bộ đếm symbol
-                        end 
-
-                        // Cập nhật LFSRs
-                        shift[0] <= feedback_mul_gi[0];
-                        for (int j=1; j<NSYM; j++) shift[j] <= shift[j-1] ^ feedback_mul_gi[j];
-                    end
-
-                    //  Message symbol 514
-                    // valid_in xuống thấp ngay sau symbol cuối
-                    else if (count == K) begin
-                        state <= PARITY;
-                        count <= 10'd0;
-
-                        // Cập nhật LFSRs
-                        shift[0] <= feedback_mul_gi[0];
-                        for (int j=1; j<NSYM; j++) shift[j] <= shift[j-1] ^ feedback_mul_gi[j];
-                    end
+                MSG1: begin
+                    if (~sop_in & valid_in) next_state = MSG2;  // Sau khi đã nhận được symbol đầu tiên của message, tiếp tục ở trạng thái MSG2 để nhận và xuất tiếp các symbols dữ liệu còn lại
+                    else                    next_state = ERROR; // Nếu sop_in vẫn còn cao sau khi đã nhận symbol đầu tiên, hoặc valid_in xuống thấp trước khi nhận được symbol đầu tiên, đều là tín hiệu không hợp lệ và chuyển sang trạng thái lỗi ERROR
                 end
 
-                // Trong 30 chu kỳ tiếp theo, hệ thống không nhận thêm dữ liệu.
-                // Dịch chuyển thanh ghi: Ở mỗi chu kỳ, giá trị tại thanh ghi cao nhất (shift[29]) được đẩy ra data_out.
-                // Cơ chế dịch: Các giá trị từ thanh ghi thấp được dịch dần lên cao: shift[j] <= shift[j-1].
-                // Kết thúc: Khi đã đẩy đủ 30 symbols (count == 29), hệ thống quay lại trạng thái IDLE.
+                MSG2: begin
+                    if ((~sop_in & valid_in) & ~(current_count[9] & current_count[0]))      next_state = MSG2;      // Tiếp tục ở lại trạng thái MSG2 nếu vẫn còn dữ liệu message và chưa nhận đủ 514 symbols (count = 514, bit 9 và bit 1 đều là 1)
+                    else if (~(sop_in | valid_in) & current_count[9] & current_count[0])    next_state = PARITY;    // Khi đã nhận đủ 514 symbols dữ liệu (count = 513, bit 9 và bit 0 đều là 1), chuyển sang trạng thái xuất parity
+                    else                                                                    next_state = ERROR;     // Nếu valid_in xuống thấp trước khi nhận đủ 514 symbols, hoặc sop_in vẫn còn cao sau khi đã nhận symbol đầu tiên, đều là tín hiệu không hợp lệ và chuyển sang trạng thái lỗi ERROR
+                end
+
                 PARITY: begin
-                    // Sau khi nhận xong Message, đẩy 30 symbols trong thanh ghi shift ra ngoài
-                    for (int j=NSYM-1; j>0; j--) shift[j] <= shift[j-1];    // Dịch chuyển các thanh ghi
-                    shift[0] <= 10'd0;    // Chèn 0 vào thanh ghi thấp nhất
-                    
-                    if (count == NSYM-1) begin  // Đã đẩy hết 30 mã Parity
-                        state <= IDLE;  // Quay về chờ gói tin mới
-                        count <= 10'd0; 
-                    end else begin
-                        count <= count + 10'd1;
-                    end
+                    if (~(sop_in | valid_in) & ~(current_count[9] & current_count[4] & current_count[3] & current_count[2] & current_count[1]))     next_state = PARITY;    // Khi chưa xuất đủ 30 symbols parity (count = 543, bit 9 và các bit [4:1] đều là 1), vẫn ở lại trạng thái PARITY để tiếp tục xuất parity
+                    else if (~(sop_in | valid_in) & (current_count[9] & current_count[4] & current_count[3] & current_count[2] & current_count[1])) next_state = DONE;      // Khi đã xuất đủ 30 symbols parity (count = 543, bit 9 và các bit [4:1] đều là 1) nhưng không nhận được gói tin mới, quay về trạng thái DONE để chờ gói tin mới
+                    else                                                                                                                            next_state = ERROR;     // Nếu valid_in vẫn còn cao sau khi đã xuất đủ parity, hoặc sop_in lên cao trước khi đã xuất đủ parity, đều là tín hiệu không hợp lệ và chuyển sang trạng thái lỗi ERROR
                 end
-            endcase
+
+                DONE: begin
+                    if (sop_in & valid_in)          next_state = MSG1;  // Khi ở trạng thái DONE, nếu nhận được gói tin mới, chuyển sang trạng thái MSG1 để bắt đầu xử lý gói tin mới
+                    else if (~(sop_in | valid_in))  next_state = IDLE;  // Khi ở trạng thái DONE, nếu không nhận được gói tin mới, quay về trạng thái IDLE để sẵn sàng nhận gói tin mới
+                    else                            next_state = ERROR; // Nếu ở trạng thái DONE, nhưng tín hiệu sop_in và valid_in không hợp lệ (ví dụ sop_in lên cao mà valid_in không lên cao, hoặc ngược lại), chuyển sang trạng thái lỗi ERROR
+                end
+
+                ERROR: begin
+                    if (sop_in & valid_in)          next_state = MSG1;  // Khi ở trạng thái lỗi, nếu nhận được gói tin mới, chuyển sang trạng thái MSG1 để bắt đầu xử lý gói tin mới
+                    else if (~(sop_in | valid_in))  next_state = IDLE;  // Khi ở trạng thái lỗi, nếu không nhận được gói tin mới, quay về trạng thái IDLE để sẵn sàng nhận gói tin mới
+                    else                            next_state = ERROR; // Nếu ở trạng thái lỗi, nhưng tín hiệu sop_in và valid_in không hợp lệ (ví dụ sop_in lên cao mà valid_in không lên cao, hoặc ngược lại), vẫn ở lại trạng thái lỗi ERROR
+                end 
+
+                default: next_state = ERROR;    // Nếu FSM rơi vào trạng thái không xác định, chuyển sang trạng thái lỗi ERROR
+        endcase
+    end
+    
+    // --- 3. FSM State Register Update ---
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (~rst_n) begin
+            current_state   <= IDLE;  // Reset về trạng thái IDLE khi rst_n ở mức thấp
+            current_count   <= 10'd0;    // Reset bộ đếm về 0 khi rst_n ở mức thấp
+        end
+        else begin
+            current_state <= next_state;   // Cập nhật trạng thái hiện tại với trạng thái tiếp theo ở mỗi chu kỳ đồng hồ
+            current_count <= next_count;   // Cập nhật bộ đếm hiện tại với giá trị tiếp theo
         end
     end
 
-    // --- 4. Output Logic ---
-    // Nếu đang ở MSG, xuất trực tiếp data_in (vừa mã hóa vừa truyền) 
-    // Nếu đang ở PARITY, xuất giá trị từ thanh ghi bậc cao nhất của LFSR
-    assign data_out  = (state == MSG) ? data_in : 
-                       (state == PARITY) ? shift[NSYM-1] : 10'd0;
-
-    // Tín hiệu valid_out báo hiệu dữ liệu ra đang hợp lệ trong cả 2 giai đoạn
-    assign valid_out = (state == MSG) || (state == PARITY);
-
-endmodule 
+endmodule : rs_enc_ctrl

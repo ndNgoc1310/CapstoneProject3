@@ -1,0 +1,208 @@
+xrun(64): 20.09-s001: (c) Copyright 1995-2020 Cadence Design Systems, Inc.
+TOOL:	xrun(64)	20.09-s001: Started on Apr 15, 2026 at 05:37:46 EDT
+xrun
+	+xm64bit
+	-sv
+	-f ./flist.f
+		+incdir+./../../../../00_rtl/fec
+		./../../../../00_rtl/common/and_nb.sv
+		./../../../../00_rtl/common/flop_r.sv
+		./../../../../00_rtl/common/xor_nb.sv
+		./../../../../00_rtl/fec/common/gf_mul_const_alpha.sv
+		./../../../../00_rtl/fec/rs_dec_syn.sv
+		./../../../../01_tb/fec/rs_dec/rs_dec_syn_tb.sv
+		-top rs_dec_syn_tb
+	/home/admin/CapstoneProject3/01_tb/fec/rs_dec/rs_dec_syn_tb.sv
+	-timescale 1ns/1ns
+	+ntb_random_seed=automatic
+	+access+rcw
+
+   User defined plus("+") options:
+	+ntb_random_seed=automatic
+
+file: ./../../../../00_rtl/common/and_nb.sv
+	module worklib.and_nb:sv
+		errors: 0, warnings: 0
+file: ./../../../../00_rtl/common/flop_r.sv
+	module worklib.flop_r:sv
+		errors: 0, warnings: 0
+file: ./../../../../00_rtl/common/xor_nb.sv
+	module worklib.xor_nb:sv
+		errors: 0, warnings: 0
+file: ./../../../../00_rtl/fec/common/gf_mul_const_alpha.sv
+	module worklib.gf_mul_const_alpha0:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha1:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha2:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha3:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha4:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha5:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha6:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha7:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha8:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha9:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha10:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha11:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha12:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha13:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha14:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha15:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha16:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha17:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha18:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha19:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha20:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha21:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha22:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha23:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha24:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha25:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha26:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha27:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha28:sv
+		errors: 0, warnings: 0
+	module worklib.gf_mul_const_alpha29:sv
+		errors: 0, warnings: 0
+file: ./../../../../00_rtl/fec/rs_dec_syn.sv
+	module worklib.rs_dec_syn:sv
+		errors: 0, warnings: 0
+	module worklib.rs_dec_syn_ctrl:sv
+		errors: 0, warnings: 0
+file: ./../../../../01_tb/fec/rs_dec/rs_dec_syn_tb.sv
+	module worklib.rs_dec_syn_tb:sv
+		errors: 0, warnings: 0
+file: /home/admin/CapstoneProject3/01_tb/fec/rs_dec/rs_dec_syn_tb.sv
+module rs_dec_syn_tb;
+                   |
+xmvlog: *W,RECOME (/home/admin/CapstoneProject3/01_tb/fec/rs_dec/rs_dec_syn_tb.sv,3|19): recompiling design unit worklib.rs_dec_syn_tb:sv.
+	First compiled from line 3 of ./../../../../01_tb/fec/rs_dec/rs_dec_syn_tb.sv.
+xmvlog: *W,SPDUSD: Include directory ./../../../../00_rtl/fec given but not used.
+	Total errors/warnings found outside modules and primitives:
+		errors: 0, warnings: 1
+	Elaborating the design hierarchy:
+		Caching library 'worklib' ....... Done
+	Top level design units:
+		rs_dec_syn_tb
+xmelab: *W,DSEMEL: This SystemVerilog design will be simulated as per IEEE 1800-2009 SystemVerilog simulation semantics. Use -disable_sem2009 option for turning off SV 2009 simulation semantics.
+	Building instance overlay tables: .................... Done
+	Generating native compiled code:
+		worklib.rs_dec_syn_ctrl:sv <0x449dbfee>
+			streams:   5, words:  7556
+		worklib.flop_r:sv <0x624f5ea1>
+			streams:   2, words:   591
+		worklib.gf_mul_const_alpha29:sv <0x6f24f51c>
+			streams:  10, words:  3024
+		worklib.gf_mul_const_alpha28:sv <0x0bb82a94>
+			streams:  10, words:  3001
+		worklib.gf_mul_const_alpha27:sv <0x10dfdbab>
+			streams:  10, words:  3001
+		worklib.gf_mul_const_alpha26:sv <0x74430423>
+			streams:  10, words:  2976
+		worklib.gf_mul_const_alpha25:sv <0x3371d268>
+			streams:  10, words:  2951
+		worklib.gf_mul_const_alpha24:sv <0x57ed0de0>
+			streams:  10, words:  2926
+		worklib.gf_mul_const_alpha23:sv <0x344ea909>
+			streams:  10, words:  2863
+		worklib.gf_mul_const_alpha22:sv <0x50d27681>
+			streams:  10, words:  2796
+		worklib.gf_mul_const_alpha21:sv <0x17e0a0ca>
+			streams:  10, words:  2727
+		worklib.gf_mul_const_alpha20:sv <0x737c7f42>
+			streams:  10, words:  2678
+		worklib.gf_mul_const_alpha19:sv <0x213bfb98>
+			streams:  10, words:  2672
+		worklib.gf_mul_const_alpha18:sv <0x45a72410>
+			streams:  10, words:  2670
+		worklib.gf_mul_const_alpha17:sv <0x5ec0d52f>
+			streams:  10, words:  2670
+		worklib.gf_mul_const_alpha16:sv <0x3a5c0aa7>
+			streams:  10, words:  2652
+		worklib.gf_mul_const_alpha15:sv <0x7d6edcec>
+			streams:  10, words:  2630
+		worklib.gf_mul_const_alpha14:sv <0x19f20364>
+			streams:  10, words:  2606
+		worklib.gf_mul_const_alpha13:sv <0x7a51a78d>
+			streams:  10, words:  2606
+		worklib.gf_mul_const_alpha12:sv <0x1ecd7805>
+			streams:  10, words:  2606
+		worklib.gf_mul_const_alpha11:sv <0x59ffae4e>
+			streams:  10, words:  2606
+		worklib.gf_mul_const_alpha10:sv <0x3d6371c6>
+			streams:  10, words:  2606
+		worklib.gf_mul_const_alpha9:sv <0x0a01f5d0>
+			streams:  10, words:  2567
+		worklib.gf_mul_const_alpha8:sv <0x4958c9c0>
+			streams:  10, words:  2524
+		worklib.gf_mul_const_alpha7:sv <0x302ba90b>
+			streams:  10, words:  2479
+		worklib.gf_mul_const_alpha6:sv <0x7372951b>
+			streams:  10, words:  2458
+		worklib.gf_mul_const_alpha5:sv <0x3fc306dc>
+			streams:  10, words:  2437
+		worklib.gf_mul_const_alpha4:sv <0x7c9a3acc>
+			streams:  10, words:  2416
+		worklib.gf_mul_const_alpha3:sv <0x4c379781>
+			streams:  10, words:  2395
+		worklib.gf_mul_const_alpha2:sv <0x0f6eab91>
+			streams:  10, words:  2374
+		worklib.gf_mul_const_alpha1:sv <0x43df3856>
+			streams:  10, words:  2353
+		worklib.gf_mul_const_alpha0:sv <0x00860446>
+			streams:  10, words:  2332
+		worklib.xor_nb:sv <0x2a6cc53b>
+			streams:   1, words:   198
+		worklib.and_nb:sv <0x40f374a9>
+			streams:   1, words:   198
+		worklib.rs_dec_syn_tb:sv <0x380b5e35>
+			streams:  14, words: 13262
+		worklib.rs_dec_syn:sv <0x6a6a0e49>
+			streams:  77, words: 18997
+	Building instance specific data structures.
+	Loading native compiled code:     .................... Done
+	Design hierarchy summary:
+		                 Instances  Unique
+		Modules:               153      36
+		Registers:             183      66
+		Scalar wires:          378       -
+		Vectored wires:        604       -
+		Always blocks:          34       5
+		Initial blocks:          4       4
+		Cont. assignments:     390     302
+		Pseudo assignments:    434      86
+		Simulation timescale:  1ps
+	Writing initial simulation snapshot: worklib.rs_dec_syn_tb:sv
+Loading snapshot worklib.rs_dec_syn_tb:sv .................... Done
+xmsim: *W,DSEM2009: This SystemVerilog design is simulated as per IEEE 1800-2009 SystemVerilog simulation semantics. Use -disable_sem2009 option for turning off SV 2009 simulation semantics.
+xcelium> source /opt/cadence/XCELIUM2009/tools/xcelium/files/xmsimrc
+xcelium> run
+--- BẮT ĐẦU MÔ PHỎNG SYNDROME CALC ---
+xmsim: *W,NCTERM: Simulation received SIGTERM signal from process 101899, user id 1000 (bash).
+xmsim: *W,NCTERM: Simulation received SIGTERM signal from process 102443, user id 1000 (make).

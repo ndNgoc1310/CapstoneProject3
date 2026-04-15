@@ -4,9 +4,10 @@ module rs_enc_tb;
     // Tín hiệu kết nối
     logic clk;
     logic rst_n;
-    logic sop;
+    logic sop_in;
     logic valid_in;
     logic [9:0] data_in;
+    logic sop_out;
     logic valid_out;
     logic [9:0] data_out;
     logic ready;
@@ -18,14 +19,15 @@ module rs_enc_tb;
 
     // Khởi tạo DUT (Device Under Test)
     rs_enc dut (
-        .clk(clk),
-        .rst_n(rst_n),
-        .sop(sop),
-        .valid_in(valid_in),
-        .data_in(data_in),
-        .valid_out(valid_out),
-        .data_out(data_out),
-        .ready(ready)
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .sop_in     (sop_in),
+        .valid_in   (valid_in),
+        .data_in    (data_in),
+        .sop_out    (sop_out),
+        .valid_out  (valid_out),
+        .data_out   (data_out),
+        .ready      (ready)
     );
 
     // Tạo xung Clock
@@ -34,7 +36,7 @@ module rs_enc_tb;
 
     initial begin
         // Mở database wave.shm
-        $shm_open("wave.shm");
+        $shm_open("waves.shm");
         
         // A (All): Tất cả tín hiệu.
         // C (Cells): Các kết nối trong module con. 
@@ -44,22 +46,24 @@ module rs_enc_tb;
     end
 
     initial begin
-        // 1. Đọc dữ liệu từ file hex
+        // 1. Đọcdữ liệu của golden model từ file hex
         $readmemh("rs_enc_input.hex", input_mem);
         $readmemh("rs_enc_output_exp.hex", expected_mem);
 
         // 2. Khởi tạo tín hiệu
         rst_n = 0;
-        sop = 0;
+        sop_in = 0;
         valid_in = 0;
         data_in = 0;
         i = 0;
         match_count = 0;
         error_count = 0;
 
-        // 3. Reset hệ thống
+        // 3. Reset DUT
         #20 rst_n = 1;
         #10;
+
+        $display("--- BẮT ĐẦU MÔ PHỎNG RS ENCODER ---");
 
         // 4. Đẩy dữ liệu vào Encoder
         wait(ready); // Chờ bộ mã hóa sẵn sàng
@@ -68,17 +72,17 @@ module rs_enc_tb;
         for (i = 0; i < 514; i++) begin
             valid_in = 1;
             data_in = input_mem[i];
-            sop = (i == 0); // Bật SOP tại symbol đầu tiên
+            sop_in = (i == 0); // Bật sop_in tại symbol đầu tiên
             @(posedge clk);
-            sop = 0;
+            sop_in = 0;
         end
         
+        // 5. Kết thúc dữ liệu đầu vào
         valid_in = 0;
         data_in = 0;
 
-        // Chờ cho đến khi hoàn thành xả Parity
+        // 6. Chờ dữ liệu đầu ra và kiểm tra kết quả
         wait(ready);
-        #100;
         
         $display("Kết quả kiểm tra: %d khớp, %d lỗi", match_count, error_count);
         $finish;

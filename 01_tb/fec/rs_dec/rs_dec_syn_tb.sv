@@ -15,7 +15,8 @@ module rs_dec_syn_tb;
 
     // --- Test Data Memories ---
     logic [9:0] rx_mem [0:543];         // Input codeword (544 symbols)
-    logic [9:0] exp_syn_mem [0:29];     // Expected syn_out (30 symbols)
+    logic [9:0] act_syn_mem [29:0];     // Actual syn_out từ DUT (30 symbols)
+    logic [9:0] exp_syn_mem [29:0];     // Expected syn_out (30 symbols)
 
     // --- Variables ---
     int i;
@@ -89,16 +90,17 @@ module rs_dec_syn_tb;
         sop_in = 0;
 
         // 6. Chờ kết quả 
-        wait(ready);    // 
+        wait(ready);    
+        act_syn_mem = syn_out; // 
 
         // 6. So sánh kết quả
         $display("--- KIỂM TRA KẾT QUẢ ---");
         for (int k = 0; k < 30; k++) begin
-            if (syn_out[k] !== exp_syn_mem[k]) begin
-                $display("[FAIL] Syndrome S%0d: Exp = %h, Act = %h", k, exp_syn_mem[k], syn_out[k]);
+            if (act_syn_mem[k] !== exp_syn_mem[k]) begin
+                $display("[FAIL] Syndrome S%0d: Exp = %h, Act = %h", k, exp_syn_mem[k], act_syn_mem[k]);
                 error_count++;
             end else begin
-                $display("[PASS] Syndrome S%0d: %h", k, syn_out[k]);
+                $display("[PASS] Syndrome S%0d: %h", k, act_syn_mem[k]);
             end
         end
 
@@ -108,7 +110,8 @@ module rs_dec_syn_tb;
         else 
             $display(">> CÓ %0d LỖI XẢY RA <<", error_count);
 
-        #100 $finish;
+        #100;
+        $finish;
     end
 
 endmodule

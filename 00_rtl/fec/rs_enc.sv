@@ -40,7 +40,7 @@ module rs_enc (
 
     and_nb #(.WIDTH(10)) AND_feedback (
         .a  (xor_feedback),
-        .b  ({10{control}}), // Mở rộng control thành 10 bit để AND với xor_feedback
+        .b  ({10{control}}), // Mở rộng control thành 10 bit để AND với xor_feedback 
         .y  (feedback)
     );
 
@@ -213,7 +213,7 @@ module rs_enc_ctrl (
                 reg_en      = '1; 
                 control     = 1'b0;     // Chuyển sang xuất parity
                 ready       = 1'b0;   
-                next_count  = current_count + 10'd1; 
+                next_count  = current_count + 10'd1;    // Tiếp tục đếm số lượng symbols parity đã xuất
                 error       = 1'b0;   
             end
 
@@ -265,13 +265,13 @@ module rs_enc_ctrl (
 
                 MSG2: begin
                     if ((~sop_in & valid_in) & ~(current_count[9] & current_count[0]))      next_state = MSG2;      // Tiếp tục ở lại trạng thái MSG2 nếu vẫn còn dữ liệu message và chưa nhận đủ 514 symbols (count = 514, bit 9 và bit 1 đều là 1)
-                    else if (~(sop_in | valid_in) & current_count[9] & current_count[0])    next_state = PARITY;    // Khi đã nhận đủ 514 symbols dữ liệu (count = 513, bit 9 và bit 0 đều là 1), chuyển sang trạng thái xuất parity
+                    else if (~(sop_in | valid_in) & (current_count[9] & current_count[0]))  next_state = PARITY;    // Khi đã nhận đủ 514 symbols dữ liệu (count = 513, bit 9 và bit 0 đều là 1), chuyển sang trạng thái xuất parity
                     else                                                                    next_state = ERROR;     // Nếu valid_in xuống thấp trước khi nhận đủ 514 symbols, hoặc sop_in vẫn còn cao sau khi đã nhận symbol đầu tiên, đều là tín hiệu không hợp lệ và chuyển sang trạng thái lỗi ERROR
                 end
 
                 PARITY: begin
-                    if (~(sop_in | valid_in) & ~(current_count[9] & current_count[4] & current_count[3] & current_count[2] & current_count[1]))     next_state = PARITY;    // Khi chưa xuất đủ 30 symbols parity (count = 543, bit 9 và các bit [4:1] đều là 1), vẫn ở lại trạng thái PARITY để tiếp tục xuất parity
-                    else if (~(sop_in | valid_in) & (current_count[9] & current_count[4] & current_count[3] & current_count[2] & current_count[1])) next_state = DONE;      // Khi đã xuất đủ 30 symbols parity (count = 543, bit 9 và các bit [4:1] đều là 1) nhưng không nhận được gói tin mới, quay về trạng thái DONE để chờ gói tin mới
+                    if (~(sop_in | valid_in) & ~(current_count[9] & current_count[4] & current_count[3] & current_count[2] & current_count[1]))     next_state = PARITY;    // Khi chưa xuất đủ 29 symbols parity (count < 542), tiếp tục ở lại trạng thái PARITY để xuất tiếp các symbols parity còn lại
+                    else if (~(sop_in | valid_in) & (current_count[9] & current_count[4] & current_count[3] & current_count[2] & current_count[1])) next_state = DONE;      // Khi đã xuất đủ 29 symbols parity (count = 542, bit [9:1] đều là 1), chuyển sang trạng thái DONE để xuất symbol parity cuối cùng và sẵn sàng nhận gói tin mới
                     else                                                                                                                            next_state = ERROR;     // Nếu valid_in vẫn còn cao sau khi đã xuất đủ parity, hoặc sop_in lên cao trước khi đã xuất đủ parity, đều là tín hiệu không hợp lệ và chuyển sang trạng thái lỗi ERROR
                 end
 

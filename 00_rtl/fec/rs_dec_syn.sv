@@ -17,35 +17,12 @@ module rs_dec_syn (
     localparam NSYM = 30;             // Số lượng symbols kiểm soát lỗi (Parity symbols = N - K)
 
     // Mảng thanh ghi lưu trữ Syndrome 
-    logic [9:0] feedback    [NSYM-1:0];
-    logic [9:0] reg_in      [NSYM-1:0];
-    logic [9:0] reg_out     [NSYM-1:0];
     logic [NSYM-1:0] reg_en;
     logic control;
+    logic [9:0] feedback    [NSYM-1:0];   // Mảng lưu trữ giá trị feedback cho mỗi thanh ghi syndrome, được tính toán từ dữ liệu đầu vào và giá trị syndrome hiện tại thông qua logic feedback
+    logic [9:0] reg_in      [NSYM-1:0];   // Mảng lưu trữ giá trị đầu vào cho mỗi thanh ghi syndrome, được tạo ra từ giá trị feedback sau khi nhân với hằng số alpha^i tương ứng thông qua các bộ nhân hằng số
 
-    // --- 1. Feedback Logic ---
-    // Logic này sẽ thực hiện phép AND giữa giá trị của thanh ghi syndrome hiện tại và tín hiệu control
-    // để xác định khi nào thực hiện feedback
-    // sau đó thực hiện phép XOR với dữ liệu đầu vào để tạo ra giá trị feedback mới cho mỗi thanh ghi syndrome.
-    logic [9:0] and_feedback [NSYM-1:0];
-    genvar i;
-    generate
-        for (i = 0; i < NSYM; i++) begin : FEEDBACK_LOGIC
-            and_nb #(.WIDTH(10)) AND_feedback (
-                .a(reg_out[i]), 
-                .b({10{control}}), 
-                .y(and_feedback[i]) 
-            );
-
-            xor_nb #(.WIDTH(10)) XOR_feedback (
-                .a(and_feedback[i]), 
-                .b(data_in), 
-                .y(feedback[i]) 
-            );
-        end
-    endgenerate
-
-    // --- 2. Instantiate 30 Bộ Nhân Hằng Số (Generated from Python) ---
+    // --- 1. Instantiate 30 Bộ Nhân Hằng Số (Generated from Python) ---
     // Mỗi bộ nhân này sẽ nhận giá trị feedback từ bước trước và nhân với một hằng số alpha^i tương ứng 
     // để tạo ra giá trị mới cho thanh ghi syndrome tiếp theo.
 
@@ -81,36 +58,24 @@ module rs_dec_syn (
     gf_mul_const_alpha28 u28 (.a(feedback[28]), .p(reg_in[28]));
     gf_mul_const_alpha29 u29 (.a(feedback[29]), .p(reg_in[29]));
 
-    // --- 3. Syndrome Register ---
-    // Các thanh ghi này sẽ lưu trữ giá trị syndrome tạm thời trong quá trình tính toán.
-    genvar j;
+    genvar i;
     generate
-        for (j = 0; j < NSYM; j++) begin : SYN_REG
-            flop_r #(.WIDTH(10)) Syn_Reg (
-                .clk    (clk),
-                .rstn   (rst_n | valid_out),    // Reset thanh ghi khi rst_n ở mức thấp hoặc khi đã hoàn thành gói tin (valid_out = 1)
-                .en     (reg_en[j]),
-                .d      (reg_in[j]),
-                .q      (reg_out[j])
+        for (i = 0; i < NSYM; i++) begin : GEN_DPATH
+            rs_dec_syn_dpath_i DPath (
+                .clk        (clk),
+                .rst_n      (rst_n),
+                .data_in    (data_in),
+                .valid_out  (valid_out),
+                .reg_en     (reg_en[i]),
+                .control    (control),
+                .reg_in     (reg_in[i]),   // Chỉ truyền reg_in của thanh ghi syndrome đầu tiên vào datapath, các thanh ghi syndrome tiếp theo sẽ được tính toán trong datapath dựa trên giá trị feedback và hằng số alpha^i
+                .feedback   (feedback[i]), // Chỉ truyền feedback của thanh ghi syndrome đầu tiên vào datapath, các giá trị feedback tiếp theo sẽ được tính toán trong datapath dựa trên dữ liệu đầu vào và giá trị syndrome hiện tại
+                .syn_out    (syn_out[i])   // Chỉ xuất syn_out của thanh ghi syndrome đầu tiên từ datapath, các giá trị syn_out tiếp theo sẽ được xuất ra từ các thanh ghi syndrome tương ứng sau khi đã hoàn thành tính toán syndrome for gói tin
             );
         end
     endgenerate
 
-    // --- 4. Output Logic ---    
-    // Logic này sẽ xuất giá trị syndrome từ các thanh ghi ra output syn_out, 
-    // nhưng chỉ khi valid_out ở mức cao (khi đã hoàn thành gói tin).
-    genvar k;
-    generate
-        for (k = 0; k < NSYM; k++) begin : SYN_OUT
-            and_nb #(.WIDTH(10)) AND_output (
-                .a(reg_out[k]),         // Giá trị syndrome hiện tại từ thanh ghi
-                .b({10{valid_out}}),    // Chỉ xuất giá trị syndrome khi valid_out ở mức cao (khi đã hoàn thành gói tin)
-                .y(syn_out[k]) 
-            );
-        end
-    endgenerate
-
-    // --- 5. FSM Control Logic ---
+    // --- 3. FSM Control Logic ---
     // FSM này sẽ điều khiển quá trình tính toán syndrome, 
     // bao gồm việc xác định khi nào bắt đầu tính toán (khi nhận được SOP), 
     // khi nào thực hiện feedback (sau khi nhận được symbol đầu tiên), 
@@ -131,6 +96,72 @@ module rs_dec_syn (
 
 endmodule : rs_dec_syn
 
+module rs_dec_syn_dpath_i (
+    input  logic        clk,
+    input  logic        rst_n,
+    input  logic [9:0]  data_in,   
+    input  logic        valid_out,
+    input  logic        reg_en,   
+    input  logic        control,
+    input  logic [9:0]  reg_in,
+    output logic [9:0]  feedback,    
+    output logic [9:0]  syn_out 
+);
+
+   // --- Parameters ---
+    localparam K = 514;               // Số lượng symbols dữ liệu (message) trong một codeword
+    localparam N = 544;               // Tổng số lượng symbols sau khi mã hóa (Codeword = Message + Parity)
+    localparam NSYM = 30;             // Số lượng symbols kiểm soát lỗi (Parity symbols = N - K)
+
+    // Mảng thanh ghi lưu trữ Syndrome 
+    logic [9:0] reg_out;
+
+    // --- 1. Feedback Logic ---
+    // Logic này sẽ thực hiện phép AND giữa giá trị của thanh ghi syndrome hiện tại và tín hiệu control
+    // để xác định khi nào thực hiện feedback
+    // sau đó thực hiện phép XOR với dữ liệu đầu vào để tạo ra giá trị feedback mới cho mỗi thanh ghi syndrome.
+    logic [9:0] and_feedback;
+    and_nb #(.WIDTH(10)) AND_feedback (
+        .a(reg_out), 
+        .b({10{control}}), 
+        .y(and_feedback) 
+    );
+
+    xor_nb #(.WIDTH(10)) XOR_feedback (
+        .a(and_feedback), 
+        .b(data_in), 
+        .y(feedback) 
+    );
+
+    // --- 2. Instantiate 30 Bộ Nhân Hằng Số (Generated from Python) ---
+    // 30 module này được khai báo chung ở module rs_dec_syn để tạo ra giá trị đầu vào cho các thanh ghi syndrome ở module rs_dec_syn_dpath.
+    // Mỗi bộ nhân này sẽ nhận giá trị feedback từ bước trước và nhân với một hằng số alpha^i tương ứng 
+    // để tạo ra giá trị mới cho thanh ghi syndrome tiếp theo.
+
+
+    // --- 3. Syndrome Register ---
+    // Các thanh ghi này sẽ lưu trữ giá trị syndrome tạm thời trong quá trình tính toán.
+    flop_r #(.WIDTH(10)) Syn_Reg (
+        .clk    (clk),
+        .rstn   (rst_n | valid_out),    // Reset thanh ghi khi rst_n ở mức thấp hoặc khi đã hoàn thành gói tin (valid_out = 1)
+        .en     (reg_en),
+        .d      (reg_in),
+        .q      (reg_out)
+    );
+
+    // --- 4. Output Logic ---    
+    // Logic này sẽ xuất giá trị syndrome từ các thanh ghi ra output syn_out, 
+    // nhưng chỉ khi valid_out ở mức cao (khi đã hoàn thành gói tin).
+    and_nb #(.WIDTH(10)) AND_output (
+        .a(feedback),        // Giá trị feedback cuối cùng sau khi cộng với dữ liệu đầu vào (R0) mà chưa nhân với hằng số alpha^i, được sử dụng làm giá trị syndrome cuối cùng
+        .b({10{valid_out}}),    // Chỉ xuất giá trị syndrome khi valid_out ở mức cao (khi đã hoàn thành gói tin)
+        .y(syn_out) 
+    );
+
+endmodule : rs_dec_syn_dpath_i
+
+
+// FSM Control Unit cho RS Decoder Syndrome Calculation
 module rs_dec_syn_ctrl (
     input  logic        clk,
     input  logic        rst_n,
@@ -195,7 +226,7 @@ module rs_dec_syn_ctrl (
             DONE: begin
                 valid_out   = 1'b1;     // Báo hiệu đã tính xong khi đã nhận đủ N symbols
                 reg_en      = '1;       
-                control     = 1'b1;     // Không quan tâm, giữ nguyên trạng thái control hiện tại
+                control     = 1'b1;     // Giữ control để xuất ra feedback cuối cùng cho các syndrome
                 ready       = 1'b1;     // Sẵn sàng nhận dữ liệu mới sau khi đã hoàn thành gói tin
                 error       = 1'b0;
                 next_count  = current_count + 10'd1;    
@@ -234,11 +265,11 @@ module rs_dec_syn_ctrl (
                 if (~sop_in & valid_in) next_state = CALC2; // Chuyển sang trạng thái CALC2 khi sop_in xuống thấp nhưng vẫn nhận được dữ liệu hợp lệ (bắt đầu chu kỳ tiếp theo)
                 else                    next_state = ERROR; // Nếu sop_in không xuống thấp hoặc valid_in không hợp lệ, chuyển sang trạng thái lỗi ERROR
             end
-// current_count[4] & current_count[3] & current_count[2] & current_count[1] & current_count[0]
+
             CALC2: begin
-                if ((~sop_in & valid_in) & ~(current_count[9] & current_count[5]))      next_state = CALC2; // Tiếp tục ở lại trạng thái CALC2 nếu vẫn còn dữ liệu vào hợp lệ và chưa nhận đủ N symbols (count = 543, bit 9 và các bit [4:1] đều là 1)
-                else if (~(sop_in | valid_in) & (current_count[9] & current_count[5]))  next_state = DONE;  // Khi đã nhận đủ N symbols (count = 543, bit 9 và các bit [4:1] đều là 1) và sop_in đã xuống thấp, chuyển sang trạng thái DONE để hoàn thành gói tin
-                else                                                                    next_state = ERROR; // Nếu valid_in xuống thấp trước khi nhận đủ N symbols, hoặc sop_in vẫn còn cao sau khi đã nhận đủ N symbols, đều là tín hiệu không hợp lệ và chuyển sang trạng thái lỗi ERROR
+                if ((~sop_in & valid_in) & ~(current_count[9] & current_count[4] & current_count[3] & current_count[2] & current_count[1]))     next_state = CALC2; // Tiếp tục ở lại trạng thái CALC2 nếu vẫn còn dữ liệu vào hợp lệ và chưa nhận đủ N symbols (count = 542, bit 9 và các bit [4:1] đều là 1)
+                else if ((~sop_in & valid_in) & (current_count[9] & current_count[4] & current_count[3] & current_count[2] & current_count[1])) next_state = DONE;  // Khi đã nhận đủ N symbols (count = 542, bit 9 và các bit [4:1] đều là 1) và sop_in đã xuống thấp, chuyển sang trạng thái DONE để hoàn thành gói tin
+                else                                                                                                                            next_state = ERROR; // Nếu valid_in xuống thấp trước khi nhận đủ N symbols, hoặc sop_in vẫn còn cao sau khi đã nhận đủ N symbols, đều là tín hiệu không hợp lệ và chuyển sang trạng thái lỗi ERROR
             end
 
             DONE: begin

@@ -85,6 +85,7 @@ module rs_enc_tb;
         wait(ready);
         
         $display("Kết quả kiểm tra: %d khớp, %d lỗi", match_count, error_count);
+        #100; 
         $finish;
     end
 

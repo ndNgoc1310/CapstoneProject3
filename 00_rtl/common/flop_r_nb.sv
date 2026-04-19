@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module flop_r 
+module flop_r_nb
 #(parameter WIDTH = 8)
 
 (
@@ -13,6 +13,6 @@ always_ff @(posedge clk, negedge rstn)
     if      (~rstn) q <= 0;
     else if (en)    q <= d;
 
-endmodule:flop_r
+endmodule:flop_r_nb
 
 

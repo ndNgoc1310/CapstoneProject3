@@ -116,7 +116,7 @@ set id [waveform add -signals [subst  {
 	} ]]
 waveform format $id -color #ffff00 -namecolor #ffff00
 set id [waveform add -signals [subst  {
-	{[format {rs_dec_syn_tb.dut.Control_Unit.reg_en[29:0]}]}
+	{[format {rs_dec_syn_tb.dut.Control_Unit.reg_en}]}
 	} ]]
 waveform format $id -color #00ffff -namecolor #00ffff
 set id [waveform add -signals [subst  {

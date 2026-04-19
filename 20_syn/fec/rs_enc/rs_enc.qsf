@@ -59,10 +59,13 @@ set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_RO
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
-set_global_assignment -name SYSTEMVERILOG_FILE ../../../00_rtl/common/and_nb.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../../../00_rtl/common/add_1b.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../../00_rtl/common/xor_nb.sv
-set_global_assignment -name SYSTEMVERILOG_FILE ../../../00_rtl/common/mux_2.sv
-set_global_assignment -name SYSTEMVERILOG_FILE ../../../00_rtl/common/flop_r.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../../../00_rtl/common/mux_2_nb.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../../../00_rtl/common/flop_r_nb.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../../../00_rtl/common/and_nb.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../../../00_rtl/common/add_nb.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../../00_rtl/fec/rs_enc.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../../00_rtl/fec/common/gf_mul_const_g.sv
+set_global_assignment -name SDC_FILE rs_enc.sdc
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

@@ -17,7 +17,7 @@ module rs_dec_syn (
     localparam NSYM = 30;             // Số lượng symbols kiểm soát lỗi (Parity symbols = N - K)
 
     // Mảng thanh ghi lưu trữ Syndrome 
-    logic [NSYM-1:0] reg_en;
+    logic reg_en;
     logic control;
     logic [9:0] feedback    [NSYM-1:0];   // Mảng lưu trữ giá trị feedback cho mỗi thanh ghi syndrome, được tính toán từ dữ liệu đầu vào và giá trị syndrome hiện tại thông qua logic feedback
     logic [9:0] reg_in      [NSYM-1:0];   // Mảng lưu trữ giá trị đầu vào cho mỗi thanh ghi syndrome, được tạo ra từ giá trị feedback sau khi nhân với hằng số alpha^i tương ứng thông qua các bộ nhân hằng số
@@ -66,7 +66,7 @@ module rs_dec_syn (
                 .rst_n      (rst_n),
                 .data_in    (data_in),
                 .valid_out  (valid_out),
-                .reg_en     (reg_en[i]),
+                .reg_en     (reg_en),
                 .control    (control),
                 .reg_in     (reg_in[i]),   // Chỉ truyền reg_in của thanh ghi syndrome đầu tiên vào datapath, các thanh ghi syndrome tiếp theo sẽ được tính toán trong datapath dựa trên giá trị feedback và hằng số alpha^i
                 .feedback   (feedback[i]), // Chỉ truyền feedback của thanh ghi syndrome đầu tiên vào datapath, các giá trị feedback tiếp theo sẽ được tính toán trong datapath dựa trên dữ liệu đầu vào và giá trị syndrome hiện tại
@@ -117,9 +117,7 @@ module rs_dec_syn_dpath_i (
     logic [9:0] reg_out;
 
     // --- 1. Feedback Logic ---
-    // Logic này sẽ thực hiện phép AND giữa giá trị của thanh ghi syndrome hiện tại và tín hiệu control
-    // để xác định khi nào thực hiện feedback
-    // sau đó thực hiện phép XOR với dữ liệu đầu vào để tạo ra giá trị feedback mới cho mỗi thanh ghi syndrome.
+    // AND giữa giá trị thanh ghi syndrome với control để chặn việc feedback của quá trình xử lý bộ syndrome của từ mã trước bị cộng lan sang symbol đầu tiên của từ mã hiện tại
     logic [9:0] and_feedback;
     and_nb #(.WIDTH(10)) AND_feedback (
         .a(reg_out), 
@@ -127,6 +125,7 @@ module rs_dec_syn_dpath_i (
         .y(and_feedback) 
     );
 
+    // XOR (GF addition) giữa symbol tiếp theo (data_in) với giá trị feedback (tổng đang cộng dồn) từ bước trước (and_feedback) để tạo ra giá trị feedback mới
     xor_nb #(.WIDTH(10)) XOR_feedback (
         .a(and_feedback), 
         .b(data_in), 
@@ -141,9 +140,9 @@ module rs_dec_syn_dpath_i (
 
     // --- 3. Syndrome Register ---
     // Các thanh ghi này sẽ lưu trữ giá trị syndrome tạm thời trong quá trình tính toán.
-    flop_r #(.WIDTH(10)) Syn_Reg (
+    flop_r_nb #(.WIDTH(10)) Syn_Reg (
         .clk    (clk),
-        .rstn   (rst_n | valid_out),    // Reset thanh ghi khi rst_n ở mức thấp hoặc khi đã hoàn thành gói tin (valid_out = 1)
+        .rstn   (rst_n),  
         .en     (reg_en),
         .d      (reg_in),
         .q      (reg_out)
@@ -163,15 +162,15 @@ endmodule : rs_dec_syn_dpath_i
 
 // FSM Control Unit cho RS Decoder Syndrome Calculation
 module rs_dec_syn_ctrl (
-    input  logic        clk,
-    input  logic        rst_n,
-    input  logic        sop_in,     // Start of Packet (Bắt đầu gói tin)
-    input  logic        valid_in,   // Báo hiệu dữ liệu vào hợp lệ
-    output logic        valid_out,  // Báo hiệu tính xong (kết thúc gói)
-    output logic [29:0] reg_en,     // Tín hiệu enable cho từng thanh ghi syndrome
-    output logic        control,    // Tín hiệu điều khiển chung cho toàn bộ module
-    output logic        ready,      // Báo hiệu module sẵn sàng nhận dữ liệu mới (sau khi đã tính xong)
-    output logic        error       // Báo hiệu lỗi (nếu có) trong quá trình tính toán syndrome
+    input  logic clk,
+    input  logic rst_n,
+    input  logic sop_in,     // Start of Packet (Bắt đầu gói tin)
+    input  logic valid_in,   // Báo hiệu dữ liệu vào hợp lệ
+    output logic valid_out,  // Báo hiệu tính xong (kết thúc gói)
+    output logic reg_en,     // Tín hiệu enable cho các thanh ghi syndrome
+    output logic control,    // Tín hiệu điều khiển chung cho toàn bộ module
+    output logic ready,      // Báo hiệu module sẵn sàng nhận dữ liệu mới (sau khi đã tính xong)
+    output logic error       // Báo hiệu lỗi (nếu có) trong quá trình tính toán syndrome
 );
     // --- Parameters ---
     localparam K = 514;     // Số lượng symbols dữ liệu (message) trong một codeword
@@ -179,8 +178,8 @@ module rs_dec_syn_ctrl (
     localparam NSYM = 30;   // Số lượng symbols kiểm soát lỗi (Parity symbols = N - K)
     
     // --- Internal Signals ---
-    logic [9:0] current_count;  // Bộ đếm để theo dõi số lượng symbols đã nhận, được sử dụng để xác định khi nào chuyển từ trạng thái CALC1 sang CALC2 và khi nào hoàn thành tính toán syndrome
-    logic [9:0] next_count;     // Giá trị tiếp theo của bộ đếm, được tính toán trong logic output của FSM dựa trên trạng thái hiện tại và tín hiệu đầu vào
+    logic [9:0] count_current;  // Bộ đếm để theo dõi số lượng symbols đã nhận, được sử dụng để xác định khi nào chuyển từ trạng thái CALC1 sang CALC2 và khi nào hoàn thành tính toán syndrome
+    logic [9:0] count_next;     // Giá trị tiếp theo của bộ đếm, được tính toán trong logic output của FSM dựa trên trạng thái hiện tại và tín hiệu đầu vào
 
     // FSM State Definition
     typedef enum logic [2:0] {
@@ -191,112 +190,112 @@ module rs_dec_syn_ctrl (
         ERROR   // Trạng thái lỗi nếu có tín hiệu không hợp lệ
     } state_t;
 
-    state_t current_state, next_state;  // Trạng thái hiện tại và trạng thái tiếp theo của FSM
+    state_t state_current, state_next;  // Trạng thái hiện tại và trạng thái tiếp theo của FSM
 
     // --- 1. FSM State Output Logic ---
     always_comb begin
-        case (current_state)
+        case (state_current)
             IDLE: begin
                 valid_out   = 1'b0;     // Chỉ báo hiệu tính xong khi đã hoàn thành gói tin
-                reg_en      = '0;       // Ban đầu không enable thanh ghi nào
+                reg_en      = 1'b0;       // Ban đầu không enable thanh ghi nào
                 control     = 1'b0;     // Ban đầu không điều khiển gì cả
                 ready       = 1'b1;     // Sẵn sàng nhận dữ liệu mới sau reset
                 error       = 1'b0;     // Không có lỗi khi reset
-                next_count  = 10'd0;    // Reset bộ đếm về 0 khi ở trạng thái IDLE
+                count_next  = 10'd0;    // Reset bộ đếm về 0 khi ở trạng thái IDLE
             end
 
             CALC1: begin
                 valid_out   = 1'b0;
-                reg_en      = '1;       // Enable tất cả thanh ghi syndrome để nhận dữ liệu đầu tiên 
+                reg_en      = 1'b1;     // Enable tất cả thanh ghi syndrome để nhận dữ liệu đầu tiên 
                 control     = 1'b0;     // Riêng trong chu kỳ đầu tiên, control vẫn là 0 để chỉ nhận dữ liệu vào mà chưa thực hiện feedback
                 ready       = 1'b0;     // Không sẵn sàng nhận dữ liệu mới khi đang tính toán    
                 error       = 1'b0;
-                next_count  = 10'd1;    // Bắt đầu đếm từ 1 khi nhận được symbol đầu tiên (SOP) để theo dõi số lượng symbols đã nhận
+                count_next  = 10'd1;    // Bắt đầu đếm từ 1 khi nhận được symbol đầu tiên (SOP) để theo dõi số lượng symbols đã nhận
             end
 
             CALC2: begin
                 valid_out   = 1'b0;     
-                reg_en      = '1;
+                reg_en      = 1'b1;
                 control     = 1'b1;     // Bắt đầu thực hiện feedback sau khi đã nhận được symbol đầu tiên
                 ready       = 1'b0;     
                 error       = 1'b0;
-                next_count  = current_count + 10'd1;    // Tăng bộ đếm lên 1 cho mỗi symbol tiếp theo nhận được trong quá trình CALC2
+                count_next  = count_current + 10'd1;    // Tăng bộ đếm lên 1 cho mỗi symbol tiếp theo nhận được trong quá trình CALC2
             end
 
             DONE: begin
                 valid_out   = 1'b1;     // Báo hiệu đã tính xong khi đã nhận đủ N symbols
-                reg_en      = '1;       
+                reg_en      = 1'b1;       
                 control     = 1'b1;     // Giữ control để xuất ra feedback cuối cùng cho các syndrome
                 ready       = 1'b1;     // Sẵn sàng nhận dữ liệu mới sau khi đã hoàn thành gói tin
                 error       = 1'b0;
-                next_count  = current_count + 10'd1;    
+                count_next  = 10'd0;    
             end
 
             ERROR: begin
                 valid_out   = 1'b0;
-                reg_en      = '0;
+                reg_en      = 1'b0;
                 control     = 1'b0;
                 ready       = 1'b1;     // Sẵn sàng nhận dữ liệu mới sau khi đã hoàn thành gói tin
                 error       = 1'b1;     // Báo lỗi nếu có tín hiệu không hợp lệ khi đang ở trạng thái IDLE hoặc CALC
-                next_count  = 10'd0;    // Reset bộ đếm về 0 khi rơi vào trạng thái lỗi
+                count_next  = 10'd0;    // Reset bộ đếm về 0 khi rơi vào trạng thái lỗi
             end
 
             default: begin
                 valid_out   = 1'b0;
-                reg_en      = '0;
+                reg_en      = 1'b0;
                 control     = 1'b0;
                 ready       = 1'b1;     // Sẵn sàng nhận dữ liệu mới sau khi đã hoàn thành gói tin
                 error       = 1'b1;     // Báo lỗi nếu có trạng thái không xác định
-                next_count  = 10'd0;    
+                count_next  = 10'd0;    
             end
         endcase
     end
 
     // --- 2. FSM State Transition Logic ---
     always_comb begin
-        case (current_state)
+        case (state_current)
             IDLE: begin
-                if (~(sop_in | valid_in))   next_state = IDLE;    // Vẫn ở trạng thái IDLE nếu chưa nhận được SOP hoặc dữ liệu không hợp lệ  
-                else if (sop_in & valid_in) next_state = CALC1;   // Chuyển sang trạng thái CALC1 khi nhận được SOP và dữ liệu hợp lệ
-                else                        next_state = ERROR;   // Nếu sop_in và valid_in không cùng lên cao, chuyển sang trạng thái lỗi ERROR
+                if (~(sop_in | valid_in))   state_next = IDLE;    // Vẫn ở trạng thái IDLE nếu chưa nhận được SOP hoặc dữ liệu không hợp lệ  
+                else if (sop_in & valid_in) state_next = CALC1;   // Chuyển sang trạng thái CALC1 khi nhận được SOP và dữ liệu hợp lệ
+                else                        state_next = ERROR;   // Nếu sop_in và valid_in không cùng lên cao, chuyển sang trạng thái lỗi ERROR
             end
 
             CALC1: begin
-                if (~sop_in & valid_in) next_state = CALC2; // Chuyển sang trạng thái CALC2 khi sop_in xuống thấp nhưng vẫn nhận được dữ liệu hợp lệ (bắt đầu chu kỳ tiếp theo)
-                else                    next_state = ERROR; // Nếu sop_in không xuống thấp hoặc valid_in không hợp lệ, chuyển sang trạng thái lỗi ERROR
+                if (~sop_in & valid_in) state_next = CALC2; // Chuyển sang trạng thái CALC2 khi sop_in xuống thấp nhưng vẫn nhận được dữ liệu hợp lệ (bắt đầu chu kỳ tiếp theo)
+                else                    state_next = ERROR; // Nếu sop_in không xuống thấp hoặc valid_in không hợp lệ, chuyển sang trạng thái lỗi ERROR
             end
 
             CALC2: begin
-                if ((~sop_in & valid_in) & ~(current_count[9] & current_count[4] & current_count[3] & current_count[2] & current_count[1]))     next_state = CALC2; // Tiếp tục ở lại trạng thái CALC2 nếu vẫn còn dữ liệu vào hợp lệ và chưa nhận đủ N symbols (count = 542, bit 9 và các bit [4:1] đều là 1)
-                else if ((~sop_in & valid_in) & (current_count[9] & current_count[4] & current_count[3] & current_count[2] & current_count[1])) next_state = DONE;  // Khi đã nhận đủ N symbols (count = 542, bit 9 và các bit [4:1] đều là 1) và sop_in đã xuống thấp, chuyển sang trạng thái DONE để hoàn thành gói tin
-                else                                                                                                                            next_state = ERROR; // Nếu valid_in xuống thấp trước khi nhận đủ N symbols, hoặc sop_in vẫn còn cao sau khi đã nhận đủ N symbols, đều là tín hiệu không hợp lệ và chuyển sang trạng thái lỗi ERROR
+                if ((~sop_in & valid_in) & ~(count_current[9] & count_current[4] & count_current[3] & count_current[2] & count_current[1]))     state_next = CALC2; // Tiếp tục ở lại trạng thái CALC2 nếu vẫn còn dữ liệu vào hợp lệ và chưa nhận đủ N symbols (count = 542, bit 9 và các bit [4:1] đều là 1)
+                else if ((~sop_in & valid_in) & (count_current[9] & count_current[4] & count_current[3] & count_current[2] & count_current[1])) state_next = DONE;  // Khi đã nhận đủ N symbols (count = 542, bit 9 và các bit [4:1] đều là 1) và sop_in đã xuống thấp, chuyển sang trạng thái DONE để hoàn thành gói tin
+                else                                                                                                                            state_next = ERROR; // Nếu valid_in xuống thấp trước khi nhận đủ N symbols, hoặc sop_in vẫn còn cao sau khi đã nhận đủ N symbols, đều là tín hiệu không hợp lệ và chuyển sang trạng thái lỗi ERROR
             end
 
             DONE: begin
-                if (sop_in & valid_in)          next_state = CALC1; // Nếu nhận được gói tin mới ngay sau khi hoàn thành gói tin trước đó (sop_in và valid_in cùng lên cao) và bộ đếm đã đạt giá trị 545 (bit 9, bit 5 và bit 0 đều là 1), chuyển sang trạng thái CALC1 để bắt đầu tính toán syndrome cho gói tin mới
-                else if (~(sop_in | valid_in))  next_state = IDLE;  // Nếu không nhận được gói tin mới, quay về trạng thái IDLE để chờ SOP tiếp theo
-                else                            next_state = ERROR; // Nếu có tín hiệu không hợp lệ (ví dụ: nhận được gói tin mới khi bộ đếm chưa đạt giá trị 545, hoặc nhận được gói tin mới ngay sau khi hoàn thành gói tin trước đó nhưng bộ đếm chưa đạt giá trị 545), chuyển sang trạng thái lỗi ERROR
+                if (sop_in & valid_in)          state_next = CALC1; // Nếu nhận được gói tin mới ngay sau khi hoàn thành gói tin trước đó (sop_in và valid_in cùng lên cao) và bộ đếm đã đạt giá trị 545 (bit 9, bit 5 và bit 0 đều là 1), chuyển sang trạng thái CALC1 để bắt đầu tính toán syndrome cho gói tin mới
+                else if (~(sop_in | valid_in))  state_next = IDLE;  // Nếu không nhận được gói tin mới, quay về trạng thái IDLE để chờ SOP tiếp theo
+                else                            state_next = ERROR; // Nếu có tín hiệu không hợp lệ (ví dụ: nhận được gói tin mới khi bộ đếm chưa đạt giá trị 545, hoặc nhận được gói tin mới ngay sau khi hoàn thành gói tin trước đó nhưng bộ đếm chưa đạt giá trị 545), chuyển sang trạng thái lỗi ERROR
             end
 
             ERROR: begin
-                if (sop_in & valid_in)          next_state = CALC1; // Nếu nhận được gói tin mới sau khi đã rơi vào trạng thái lỗi, chuyển sang trạng thái CALC1 để bắt đầu tính toán syndrome cho gói tin mới
-                else if (~(sop_in | valid_in))  next_state = IDLE;  // Nếu không nhận được gói tin mới, quay về trạng thái IDLE để chờ SOP tiếp theo
-                else                            next_state = ERROR; // Nếu có tín hiệu không hợp lệ, vẫn giữ nguyên trạng thái lỗi ERROR
+                if (sop_in & valid_in)          state_next = CALC1; // Nếu nhận được gói tin mới sau khi đã rơi vào trạng thái lỗi, chuyển sang trạng thái CALC1 để bắt đầu tính toán syndrome cho gói tin mới
+                else if (~(sop_in | valid_in))  state_next = IDLE;  // Nếu không nhận được gói tin mới, quay về trạng thái IDLE để chờ SOP tiếp theo
+                else                            state_next = ERROR; // Nếu có tín hiệu không hợp lệ, vẫn giữ nguyên trạng thái lỗi ERROR
             end
 
-            default: next_state = ERROR;    // Nếu FSM rơi vào trạng thái không xác định, chuyển sang trạng thái lỗi ERROR
+            default: state_next = ERROR;    // Nếu FSM rơi vào trạng thái không xác định, chuyển sang trạng thái lỗi ERROR
         endcase
     end
 
     // --- 3. FSM State Register Update ---
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
-            current_state   <= IDLE;  // Reset về trạng thái IDLE khi rst_n ở mức thấp
-            current_count   <= 10'd0;    // Reset bộ đếm về 0 khi rst_n ở mức thấp
+            state_current   <= IDLE;  // Reset về trạng thái IDLE khi rst_n ở mức thấp
+            count_current   <= 10'd0;    // Reset bộ đếm về 0 khi rst_n ở mức thấp
         end
         else begin
-            current_state <= next_state;   // Cập nhật trạng thái hiện tại với trạng thái tiếp theo ở mỗi chu kỳ đồng hồ
-            current_count <= next_count;   // Cập nhật bộ đếm hiện tại với giá trị tiếp theo
+            state_current <= state_next;   // Cập nhật trạng thái hiện tại với trạng thái tiếp theo ở mỗi chu kỳ đồng hồ
+            count_current <= count_next;   // Cập nhật bộ đếm hiện tại với giá trị tiếp theo
         end
     end
 

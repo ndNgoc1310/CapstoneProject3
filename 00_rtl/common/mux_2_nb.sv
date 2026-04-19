@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module mux_2 
+module mux_2_nb
 #(parameter WIDTH = 32)
 (
     input   logic   [WIDTH-1:0] d0, d1,
@@ -10,4 +10,4 @@ module mux_2
 
 assign y = s ? d1 : d0;
 
-endmodule:mux_2
+endmodule:mux_2_nb

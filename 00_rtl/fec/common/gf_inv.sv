@@ -7,6 +7,7 @@ module gf_inv (
     input  logic [9:0] x,
     output logic [9:0] x_inv
 );
+
     always_comb begin
         case (x)
             10'd0: x_inv = 10'd0; // 0 has no inverse
@@ -1036,4 +1037,5 @@ module gf_inv (
             default: x_inv = 10'd0;
         endcase
     end
+
 endmodule

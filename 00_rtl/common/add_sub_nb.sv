@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module add_nb
+module add_sub_nb
 #(parameter WIDTH = 32)
 (
     input   logic   [WIDTH-1:0] a, b,
@@ -17,7 +17,7 @@ genvar i;
             if (i == 0) begin
                 add_1b u_adder (
                     .a   (a[i]),
-                    .b   (b[i]),
+                    .b   (b[i] ^ cin), // XOR for subtraction
                     .cin (cin),
                     .sum (sum[i]),
                     .cout(carry[i])
@@ -25,7 +25,7 @@ genvar i;
             end else begin
                 add_1b u_adder (
                     .a   (a[i]),
-                    .b   (b[i]),
+                    .b   (b[i] ^ cin), // XOR for subtraction
                     .cin (carry[i-1]),
                     .sum (sum[i]),
                     .cout(carry[i])
@@ -36,5 +36,5 @@ genvar i;
 
 xor (cout, carry[WIDTH-1], cin);
 
-endmodule:add_nb
+endmodule:add_sub_nb
 

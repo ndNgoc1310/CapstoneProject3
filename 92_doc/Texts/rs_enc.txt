@@ -102,7 +102,7 @@ module rs_enc (
         for (i = 0; i < NSYM; i++) begin : LFSR_REGS
             flop_r #(.WIDTH(10)) Reg (
                 .clk   (clk),
-                .rstn  (rst_n),
+                .rst_n (rst_n),
                 .en    (reg_en[i]),
                 .d     (reg_in[i]), 
                 .q     (reg_out[i]) 

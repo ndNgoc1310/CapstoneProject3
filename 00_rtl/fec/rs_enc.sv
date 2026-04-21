@@ -1,49 +1,49 @@
 // rs_enc.sv
 
 // Reed-Solomon (544, 514) Encoder for GF(2^10)
-module rs_enc (
-    input  logic        clk,        // Tín hiệu clock
-    input  logic        rst_n,      // Tín hiệu reset, active low
-    input  logic        sop_in,     // Đánh dấu bắt đầu một gói tin (Start of Packet)
-    input  logic        valid_in,   // Tín hiệu valid cho data_in. Data_in chỉ có giá trị khi tín hiệu này mức cao
-    input  logic [9:0]  data_in,    // Dữ liệu tin nhắn đầu vào 10-bit (tổng cộng 514 symbols)
+module rs_enc 
+#(
+    parameter WIDTH = 10,
+    parameter NSYM = 30
+)
+(
+    input  logic                clk,        // Tín hiệu clock
+    input  logic                rst_n,      // Tín hiệu reset, active low
+    input  logic                sop_in,     // Đánh dấu bắt đầu một gói tin (Start of Packet)
+    input  logic                valid_in,   // Tín hiệu valid cho data_in. Data_in chỉ có giá trị khi tín hiệu này mức cao
+    input  logic [WIDTH-1:0]    data_in,    // Dữ liệu tin nhắn đầu vào 10-bit (tổng cộng 514 symbols)
     
-    output logic        sop_out,    // Đánh dấu bắt đầu một gói tin ra (Start of Packet)
-    output logic        valid_out,  // Tín hiệu valid cho data_out
-    output logic [9:0]  data_out,   // Dữ liệu Codeword ra (544 symbols) (bao gồm cả Message và Parity)
-    output logic        ready,      // Sẵn sàng nhận gói tin mới (High ở trạng thái IDLE)
-    output logic        error       // Báo hiệu gói tin không hợp lệ
+    output logic                sop_out,    // Đánh dấu bắt đầu một gói tin ra (Start of Packet)
+    output logic                valid_out,  // Tín hiệu valid cho data_out
+    output logic [WIDTH-1:0]    data_out,   // Dữ liệu Codeword ra (544 symbols) (bao gồm cả Message và Parity)
+    output logic                ready,      // Sẵn sàng nhận gói tin mới (High ở trạng thái IDLE)
+    output logic                error       // Báo hiệu gói tin không hợp lệ
 );
 
-    // --- Parameters ---
-    localparam K = 514;     // Số lượng symbols dữ liệu (message) trong một codeword
-    localparam N = 544;     // Tổng số lượng symbols sau khi mã hóa (Codeword = Message + Parity)
-    localparam NSYM = 30;   // Số lượng symbols kiểm soát lỗi (Parity symbols = N - K)
-
     // --- Internal Signals ---
-    logic [9:0] reg_in  [NSYM-1:0];         // Tín hiệu đầu vào cho các thanh ghi LFSR, được tính toán từ feedback và các hệ số g[i]
-    logic [9:0] reg_out [NSYM-1:0];         // Tín hiệu đầu ra từ các thanh ghi LFSR, lưu trữ trạng thái hiện tại của số dư trong quá trình chia đa thức
-    logic reg_en;                           // Tín hiệu enable cho các thanh ghi LFSR 
-    logic [9:0] feedback_mul_gi [NSYM-1:0]; // Lưu kết quả sau khi nhân feedback với các hệ số g[i] từ 30 bộ nhân hằng số 
-    logic [9:0] xor_feedback;               // Tín hiệu trung gian sau khi XOR giữa data_in và thanh ghi bậc cao nhất của số dư, được sử dụng làm input cho các bộ nhân hằng số
-    logic [9:0] feedback;                   // Tín hiệu phản hồi dùng để tính toán số dư
-    logic control;                          // Biến điều khiển để xác định khi nào bắt đầu xuất parity sau khi đã xuất hết 514 symbols dữ liệu
-    logic count_en;                         // Tín hiệu enable cho bộ đếm, được điều khiển bởi FSM để bắt đầu đếm khi nhận được symbol đầu tiên của message và tiếp tục đếm trong suốt quá trình xuất message và parity
-    logic count_parity;                     // Tín hiệu để xác định khi nào đã xuất đủ 514 symbols dữ liệu, dựa trên giá trị của bộ đếm (count = 513, bit 9 và bit 0 đều là 1)
-    logic count_done;                       // Tín hiệu để xác định khi nào đã xuất đủ 29 symbols parity, dựa trên giá trị của bộ đếm (count = 542, bit [9] và bit [4:1] đều là 1)
+    logic [WIDTH-1:0] reg_in  [NSYM-1:0];           // Tín hiệu đầu vào cho các thanh ghi LFSR, được tính toán từ feedback và các hệ số g[i]
+    logic [WIDTH-1:0] reg_out [NSYM-1:0];           // Tín hiệu đầu ra từ các thanh ghi LFSR, lưu trữ trạng thái hiện tại của số dư trong quá trình chia đa thức
+    logic reg_en;                                   // Tín hiệu enable cho các thanh ghi LFSR 
+    logic [WIDTH-1:0] feedback_mul_gi [NSYM-1:0];   // Lưu kết quả sau khi nhân feedback với các hệ số g[i] từ 30 bộ nhân hằng số 
+    logic [WIDTH-1:0] xor_feedback;                 // Tín hiệu trung gian sau khi XOR giữa data_in và thanh ghi bậc cao nhất của số dư, được sử dụng làm input cho các bộ nhân hằng số
+    logic [WIDTH-1:0] feedback;                     // Tín hiệu phản hồi dùng để tính toán số dư
+    logic control;                                  // Biến điều khiển để xác định khi nào bắt đầu xuất parity sau khi đã xuất hết 514 symbols dữ liệu
+    logic count_en;                                 // Tín hiệu enable cho bộ đếm, được điều khiển bởi FSM để bắt đầu đếm khi nhận được symbol đầu tiên của message và tiếp tục đếm trong suốt quá trình xuất message và parity
+    logic count_parity;                             // Tín hiệu để xác định khi nào đã xuất đủ 514 symbols dữ liệu, dựa trên giá trị của bộ đếm (count = 513, bit 9 và bit 0 đều là 1)
+    logic count_done;                               // Tín hiệu để xác định khi nào đã xuất đủ 29 symbols parity, dựa trên giá trị của bộ đếm (count = 542, bit [9] và bit [4:1] đều là 1)
 
     // --- 1. Feedback Logic ---
     // XOR giữa data_in với thanh ghi bậc cao nhất của số dư (reg_out[NSYM-1]) để tạo ra giá trị feedback mới, được sử dụng làm input cho các bộ nhân hằng số
-    xor_nb #(.WIDTH(10)) XOR_feedback (
+    xor_nb #(.WIDTH(WIDTH)) Fbk_Xor (
         .a  (data_in),
         .b  (reg_out[NSYM-1]),
         .y  (xor_feedback)
     );
 
     // AND giữa giá trị feedback mới (xor_feedback) với control để chặn việc feedback của quá trình xử lý bộ syndrome của từ mã trước bị cộng lan sang symbol đầu tiên của từ mã hiện tại
-    and_nb #(.WIDTH(10)) AND_feedback (
+    and_nb #(.WIDTH(WIDTH)) Fbk_And (
         .a  (xor_feedback),
-        .b  ({10{control}}), // Mở rộng control thành 10 bit để AND với xor_feedback 
+        .b  ({WIDTH{control}}), // Mở rộng control thành WIDTH bit để AND với xor_feedback 
         .y  (feedback)
     );
 
@@ -90,7 +90,7 @@ module rs_enc (
             if (j == 0) begin : FIRST_REG
                 assign reg_in[0] = feedback_mul_gi[0]; // Thanh ghi bậc thấp nhất chỉ nhận giá trị sau khi nhân hằng số g[0] với feedback, không có giá trị nào khác cộng vào
             end else begin : OTHER_REGS
-                xor_nb #(.WIDTH(10)) XOR_RegIn (
+                xor_nb #(.WIDTH(WIDTH)) Reg_In_Xor (
                     .a(feedback_mul_gi[j]),
                     .b(reg_out[j-1]),
                     .y(reg_in[j])
@@ -105,9 +105,9 @@ module rs_enc (
     genvar i;
     generate
         for (i = 0; i < NSYM; i++) begin : LFSR_REGS
-            flop_r_nb #(.WIDTH(10)) Reg (
+            flop_r_nb #(.WIDTH(WIDTH)) Reg (
                 .clk   (clk),
-                .rstn  (rst_n),
+                .rst_n (rst_n),
                 .en    (reg_en),
                 .d     (reg_in[i]), 
                 .q     (reg_out[i]) 
@@ -117,7 +117,7 @@ module rs_enc (
 
     // --- 5. Output Logic ---
     // Dữ liệu data_out được xuất lần lượt: đầu tiên là 514 symbols dữ liệu (data_in), sau đó là 30 symbols parity (reg_out[0] đến reg_out[29])
-    mux_2_nb #(.WIDTH(10)) Output_Mux (
+    mux_2_nb #(.WIDTH(WIDTH)) Out_Mux (
         .d0 (reg_out[NSYM-1]),  // Chọn parity từ thanh ghi bậc cao nhất sau khi đã xuất hết 514 symbols dữ liệu
         .d1 (data_in),          // Chọn data_in trong quá trình xuất 514 symbols dữ liệu
         .s  (control),          // Chuyển sang parity sau khi đã xuất hết 514 symbols dữ liệu
@@ -159,44 +159,49 @@ endmodule : rs_enc
 // --------------------------------------------------------------
 
 // Module bộ đếm để theo dõi số lượng symbols đã xuất ra, được enable bởi FSM khi bắt đầu xuất message và tiếp tục đếm trong suốt quá trình xuất message và parity
-module rs_enc_cnt (
-    input  logic        clk,
-    input  logic        rst_n,
-    input  logic        count_en,       // Tín hiệu enable cho bộ đếm, được điều khiển bởi FSM để bắt đầu đếm khi nhận được symbol đầu tiên của message và tiếp tục đếm trong suốt quá trình xuất message và parity
-    input  logic        valid_out,      // Tín hiệu valid_out từ FSM, cho biết khi nào đang xuất dữ liệu có giá trị (bao gồm cả message và parity)
-    input  logic        ready,          // Tín hiệu ready từ FSM, cho biết khi nào sẵn sàng nhận gói tin mới
-    output logic        count_parity,   // Tín hiệu để xác định khi nào đã xuất đủ 514 symbols dữ liệu (message), dựa trên giá trị của bộ đếm
-    output logic        count_done      // Tín hiệu để xác định khi nào đã xuất đủ 29 symbols parity, dựa trên giá trị của bộ đếm
+module rs_enc_cnt 
+#(
+    parameter WIDTH = 10,
+    parameter NSYM = 30
+)
+(
+    input  logic clk,
+    input  logic rst_n,
+    input  logic count_en,       // Tín hiệu enable cho bộ đếm, được điều khiển bởi FSM để bắt đầu đếm khi nhận được symbol đầu tiên của message và tiếp tục đếm trong suốt quá trình xuất message và parity
+    input  logic valid_out,      // Tín hiệu valid_out từ FSM, cho biết khi nào đang xuất dữ liệu có giá trị (bao gồm cả message và parity)
+    input  logic ready,          // Tín hiệu ready từ FSM, cho biết khi nào sẵn sàng nhận gói tin mới
+    output logic count_parity,   // Tín hiệu để xác định khi nào đã xuất đủ 514 symbols dữ liệu (message), dựa trên giá trị của bộ đếm
+    output logic count_done      // Tín hiệu để xác định khi nào đã xuất đủ 29 symbols parity, dựa trên giá trị của bộ đếm
 );
 
     // Internal signals for counter control
-    logic [9:0] count_in;   // Tín hiệu đầu vào cho bộ đếm, được tính toán từ giá trị hiện tại của bộ đếm và tín hiệu valid_out để quyết định khi nào reset về 0 hoặc tăng lên 1
-    logic [9:0] count_out;  // Tín hiệu đầu ra từ bộ đếm, lưu trữ số lượng symbols đã xuất ra, được sử dụng để xác định khi nào chuyển từ xuất message sang xuất parity và khi nào hoàn thành xuất codeword
-    logic [9:0] count_next; // Tín hiệu trung gian để tính toán giá trị tiếp theo của bộ đếm
+    logic [WIDTH-1:0] count_in;   // Tín hiệu đầu vào cho bộ đếm, được tính toán từ giá trị hiện tại của bộ đếm và tín hiệu valid_out để quyết định khi nào reset về 0 hoặc tăng lên 1
+    logic [WIDTH-1:0] count_out;  // Tín hiệu đầu ra từ bộ đếm, lưu trữ số lượng symbols đã xuất ra, được sử dụng để xác định khi nào chuyển từ xuất message sang xuất parity và khi nào hoàn thành xuất codeword
+    logic [WIDTH-1:0] count_next; // Tín hiệu trung gian để tính toán giá trị tiếp theo của bộ đếm
 
     // Bộ đếm để theo dõi số lượng symbols đã xuất ra, được enable bởi FSM khi bắt đầu xuất message và tiếp tục đếm trong suốt quá trình xuất message và parity
-    flop_r_nb #(.WIDTH(10)) Counter (
+    flop_r_nb #(.WIDTH(WIDTH)) Cnt_Reg (
         .clk   (clk),
-        .rstn  (rst_n),
+        .rst_n (rst_n),
         .en    (count_en),
         .d     (count_in), 
         .q     (count_out) 
     );
 
     // Logic để tính toán giá trị tiếp theo của bộ đếm, được điều khiển bởi FSM
-    add_nb #(.WIDTH(10)) Count_Adder (
+    add_sub_nb #(.WIDTH(WIDTH)) Cnt_Add (
         .a      (count_out),
-        .b      (10'd1),
+        .b      (WIDTH'('d1)),
         .cin    (1'b0),
         .sum    (count_next),
         .cout   ()              // Không cần sử dụng tín hiệu carry out trong trường hợp này vì bộ đếm chỉ cần đếm đến 542
     );
 
     // Logic để reset bộ đếm về 0 khi có tín hiệu valid_out và ready cùng lên cao
-    and_nb #(.WIDTH(10)) Count_Reset (
-        .a  ({10{~(valid_out & ready)}}),   // Khi valid_out và ready cùng lên cao, tạo ra tín hiệu reset cho bộ đếm
-        .b  (count_next),                   // Giá trị tiếp theo của bộ đếm sau khi cộng 1
-        .y  (count_in)                      // Tín hiệu đầu vào cho bộ đếm, sẽ là count_next khi đang xuất message/parity, hoặc 0 khi bắt đầu gói tin mới
+    and_nb #(.WIDTH(WIDTH)) Cnt_Rst (
+        .a  ({WIDTH{~(valid_out & ready)}}),    // Khi valid_out và ready cùng lên cao, tạo ra tín hiệu reset cho bộ đếm
+        .b  (count_next),                       // Giá trị tiếp theo của bộ đếm sau khi cộng 1
+        .y  (count_in)                          // Tín hiệu đầu vào cho bộ đếm, sẽ là count_next khi đang xuất message/parity, hoặc 0 khi bắt đầu gói tin mới
     );
     
     // Logic để xác định khi nào đã xuất đủ 514 symbols dữ liệu và khi nào đã xuất đủ 29 symbols parity dựa trên giá trị của bộ đếm (count = 513, bit 9 và bit 0 đều là 1)
@@ -210,7 +215,8 @@ endmodule : rs_enc_cnt
 // --------------------------------------------------------------
 
 // Module điều khiển FSM cho RS Encoder
-module rs_enc_ctrl (
+module rs_enc_ctrl
+(
     input  logic clk,
     input  logic rst_n,
     input  logic sop_in,        // Đánh dấu bắt đầu một gói tin vào (Start of Packet)
@@ -225,13 +231,6 @@ module rs_enc_ctrl (
     output logic ready,         // Sẵn sàng nhận gói tin mới, chỉ ở mức cao khi FSM ở trạng thái IDLE hoặc sau khi hoàn thành xuất codeword
     output logic error          // Báo hiệu gói tin không hợp lệ, được đặt ở mức cao khi nhận được tín hiệu không hợp lệ trong quá trình IDLE hoặc MSG, hoặc khi FSM rơi vào trạng thái không xác định
 );
-
-    // --- Parameters ---
-    localparam K = 514;     // Số lượng symbols dữ liệu (message) trong một codeword
-    localparam N = 544;     // Tổng số lượng symbols sau khi mã hóa (Codeword = Message + Parity)
-    localparam NSYM = 30;   // Số lượng symbols kiểm soát lỗi (Parity symbols = N - K)
-
-    // --- Internal Signals ---
 
     // Định nghĩa các trạng thái của FSM
     typedef enum logic [2:0] {
@@ -321,7 +320,7 @@ module rs_enc_ctrl (
         endcase
     end
 
-    // --- 3. FSM State Transition Logic ---
+    // --- 2. FSM State Transition Logic ---
     always_comb begin
         case (state_current)
                 IDLE: begin
@@ -363,7 +362,7 @@ module rs_enc_ctrl (
         endcase
     end
     
-    // --- 4. FSM State Register Update ---
+    // --- 3. FSM State Register Update ---
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
             state_current   <= IDLE;  // Reset về trạng thái IDLE khi rst_n ở mức thấp

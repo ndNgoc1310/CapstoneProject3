@@ -1,5 +1,6 @@
 +incdir+./../../../../00_rtl/fec
 
+./../../../../00_rtl/common/cmm_nb.sv
 
 ./../../../../00_rtl/fec/common/gf_mul.sv
 ./../../../../00_rtl/fec/common/gf_inv_rom.sv

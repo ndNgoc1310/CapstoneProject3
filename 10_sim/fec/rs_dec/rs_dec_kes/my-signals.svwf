@@ -1,0 +1,142 @@
+
+#
+# Mnemonic Maps
+#
+mmap new  -reuse -name {Boolean as Logic} -radix %b -contents {{%c=FALSE -edgepriority 1 -shape low}
+{%c=TRUE -edgepriority 1 -shape high}}
+mmap new  -reuse -name {Example Map} -radix %x -contents {{%b=11???? -bgcolor orange -label REG:%x -linecolor yellow -shape bus}
+{%x=1F -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=2C -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=* -label %x -linecolor gray -shape bus}}
+
+array unset createdGroup
+array set createdGroup {}
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.clk}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.rst_n}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.test_idx}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.pass_cnt}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.fail_cnt}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.mismatch}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.valid_in}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.syn_in[29:0]}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.valid_out}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.ready}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.error}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.lam_out[15:0]}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.ome_out[15:0]}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Ctrl_Unit.state_current[2:0]}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Ctrl_Unit.init}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Ctrl_Unit.reg_en}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Ctrl_Unit.len_en}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Ctrl_Unit.cnt_en}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Br_Unit.len_out[4:0]}]}
+	} ]]
+waveform format $id -radix %d -color #0099ff -namecolor #0099ff
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Br_Unit.dis_neq_0}]}
+	} ]]
+waveform format $id -color #0099ff -namecolor #0099ff
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Br_Unit.len_lte}]}
+	} ]]
+waveform format $id -color #0099ff -namecolor #0099ff
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Br_Unit.delta}]}
+	} ]]
+waveform format $id -color #0099ff -namecolor #0099ff
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Br_Unit.cnt_out[4:0]}]}
+	} ]]
+waveform format $id -radix %d -color #0099ff -namecolor #0099ff
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Br_Unit.cnt_end}]}
+	} ]]
+waveform format $id -color #0099ff -namecolor #0099ff
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Dis_Calc.dis_out[9:0]}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Syn_Wdw.syn_wdw[15:0]}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Lam_Dpath.lam_out[15:0]}]}
+	} ]]
+waveform format $id -color #00ff00 -namecolor #00ff00
+waveform hierarchy collapse $id
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Lam_Dpath.l_aux_out[15:0]}]}
+	} ]]
+waveform format $id -color #00ff00 -namecolor #00ff00
+waveform hierarchy collapse $id
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Ome_Dpath.ome_out[15:0]}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+waveform hierarchy collapse $id
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Ome_Dpath.o_aux_out[15:0]}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_kes_tb.DUT.Gam_Dpath.gam_out[9:0]}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+
+waveform xview limits 330.279ns 580.279ns

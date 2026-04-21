@@ -20,7 +20,7 @@ module rs_dec_kes
     output logic [WIDTH-1:0] ome_out [ORDER:0]
 );
 
-    // Internal signals for counter control
+    // Internal signals
     logic [WIDTH-1:0] syn_wdw [ORDER:0];
     logic [WIDTH-1:0] dis_out;
     logic [WIDTH-1:0] gam_out;
@@ -353,6 +353,7 @@ module rs_dec_kes_br
     logic [CNT_WIDTH-1:0] len_out;
     logic [CNT_WIDTH-1:0] len_nxt;
     logic [CNT_WIDTH-1:0] len_mux;
+    logic len_ge;
     logic len_lte;
     logic dis_neq_0;
 
@@ -417,12 +418,12 @@ module rs_dec_kes_br
         .b      ({len_out, 1'b0}),   
         .cin    (1'b1),
         .sum    (),
-        .cout   (len_lte)                      
+        .cout   (len_ge)                      
     );
-
+    assign len_lte = ~len_ge; // len_lte = 1 khi cnt_out <= len_out
     assign cnt_end = cnt_out[4] & cnt_out[3] & cnt_out[2] & cnt_out[0];
     assign dis_neq_0 = |dis_out;
-    assign delta = dis_neq_0 & ~len_lte;
+    assign delta = dis_neq_0 & len_lte;
 
 endmodule:rs_dec_kes_br
 
@@ -459,63 +460,63 @@ module rs_dec_kes_ctrl
     always_comb begin
         case (state_current)
             IDLE: begin
-                init = 1'b0;
-                reg_en = 1'b0;
-                len_en = 1'b0;
-                cnt_en = 1'b0;
-                valid_out = 1'b0;
-                ready = 1'b1;  
-                error = 1'b0; 
+                init        = 1'b0;
+                reg_en      = 1'b0;
+                len_en      = 1'b0;
+                cnt_en      = 1'b0;
+                valid_out   = 1'b0;
+                ready       = 1'b1;  
+                error       = 1'b0; 
             end
 
             INIT: begin
-                init = 1'b1;
-                reg_en = 1'b1;
-                len_en = 1'b1;
-                cnt_en = 1'b1;
-                valid_out = 1'b0;
-                ready = 1'b0;  
-                error = 1'b0; 
+                init        = 1'b1;
+                reg_en      = 1'b1;
+                len_en      = 1'b1;
+                cnt_en      = 1'b1;
+                valid_out   = 1'b0;
+                ready       = 1'b0;  
+                error       = 1'b0; 
             end
 
             CALC: begin
-                init = 1'b0;
-                reg_en = 1'b1;
-                len_en = 1'b1;
-                cnt_en = 1'b1;
-                valid_out = 1'b0;
-                ready = 1'b0;  
-                error = 1'b0; 
+                init        = 1'b0;
+                reg_en      = 1'b1;
+                len_en      = 1'b1;
+                cnt_en      = 1'b1;
+                valid_out   = 1'b0;
+                ready       = 1'b0;  
+                error       = 1'b0; 
             end
 
             DONE: begin
-                init = 1'b0;
-                reg_en = 1'b0;
-                len_en = 1'b0;
-                cnt_en = 1'b0;
-                valid_out = 1'b1; 
-                ready = 1'b1;  
-                error = 1'b0; 
+                init        = 1'b0;
+                reg_en      = 1'b0;
+                len_en      = 1'b0;
+                cnt_en      = 1'b0;
+                valid_out   = 1'b1; 
+                ready       = 1'b1;  
+                error       = 1'b0; 
             end
 
             ERROR: begin
-                init = 1'b0;
-                reg_en = 1'b0;
-                len_en = 1'b0;
-                cnt_en = 1'b0;
-                valid_out = 1'b0; 
-                ready = 1'b1;  
-                error = 1'b1; 
+                init        = 1'b0;
+                reg_en      = 1'b0;
+                len_en      = 1'b0;
+                cnt_en      = 1'b0;
+                valid_out   = 1'b0; 
+                ready       = 1'b1;  
+                error       = 1'b1; 
             end
 
             default: begin
-                init = 1'b0;
-                reg_en = 1'b0;
-                len_en = 1'b0;
-                cnt_en = 1'b0;
-                valid_out = 1'b0; 
-                ready = 1'b1;  
-                error = 1'b1; 
+                init        = 1'b0;
+                reg_en      = 1'b0;
+                len_en      = 1'b0;
+                cnt_en      = 1'b0;
+                valid_out   = 1'b0; 
+                ready       = 1'b1;  
+                error       = 1'b1; 
             end
         endcase
     end

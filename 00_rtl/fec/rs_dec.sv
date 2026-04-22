@@ -105,7 +105,7 @@ module rs_dec
         .push_sop   (sop_in),
         .push_en    (valid_in),
         .data_in    (data_in),
-        .pop_sop    (kes_to_chien_valid),
+        .pop_sop    (chien_sop_out),
         .pop_en     (chien_valid_out),
 
         .valid_out  (lifo_valid_out),

@@ -154,7 +154,7 @@ module top #(
 
     // Logic ghi RAM (Lưu codeword bị lỗi để so sánh)
     always_ff @(posedge clk) begin
-        if (!rst_n) wr_ptr <= '0;
+        if (~rst_n) wr_ptr <= '0;
         else if (enc_valid) begin
             cmp_ram[wr_ptr] <= corrupted_data;
             wr_ptr <= (enc_sop) ? 10'd1 : wr_ptr + 1'b1;
@@ -163,10 +163,10 @@ module top #(
 
     // Logic đọc RAM (Đọc ngược từ 543 về 0)
     always_ff @(posedge clk) begin
-        if (!rst_n) rd_ptr <= 10'd543;
+        if (dec_sop) rd_ptr <= 10'd543;
         else if (dec_valid) begin
-            rd_ptr <= (dec_sop) ? 10'd542 : rd_ptr - 1'b1;
-        end else rd_ptr <= 10'd543;
+            rd_ptr <= rd_ptr - 10'd1;
+        end
     end
 
     // assign ram_data_out = cmp_ram[rd_ptr];
@@ -185,7 +185,7 @@ module top #(
 
     // So sánh và đếm lỗi đã sửa
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n || start_demo) begin
+        if (~rst_n | start_demo) begin
             corrected_err_cnt <= '0;
         end else if (dec_valid_q) begin
             // Nếu dữ liệu sau decode khác dữ liệu corrupted nạp vào RAM -> Đã sửa lỗi

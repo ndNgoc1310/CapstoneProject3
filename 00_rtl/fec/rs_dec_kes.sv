@@ -258,36 +258,64 @@ module rs_dec_kes_wdw
 );
 
     // --- Internal Signals ---
-    logic [WIDTH-1:0] syn_wdw_in [NSYM-1:0];
-    logic [WIDTH-1:0] syn_wdw_out [NSYM-1:0];
+    logic [WIDTH-1:0] syn_buf_in [NSYM-1:0];
+    logic [WIDTH-1:0] syn_buf_out [NSYM-1:0];   
+    logic [WIDTH-1:0] syn_wdw_in [ORDER:0];
+    logic [WIDTH-1:0] syn_wdw_out [ORDER:0];
 
+    // --- 1.
     genvar i;
     generate
-        for (i=0; i<NSYM; i++) begin : SYN_WDW_GEN
-            mux_2_nb #(.WIDTH(WIDTH)) Wdw_Mux (
-                .d0 (i == (NSYM - 1) ? syn_wdw_out[0] : syn_wdw_out[i+1]),
+        for (i=0; i<NSYM; i++) begin : SYN_BUF_GEN
+            mux_2_nb #(.WIDTH(WIDTH)) Buf_Mux (
+                .d0 (i == (NSYM - 1) ? WIDTH'('d0) : syn_buf_out[i+1]),
                 .d1 (syn_in[i]),
                 .s  (init),
-                .y  (syn_wdw_in[i])
+                .y  (syn_buf_in[i])
             );
+
+            flop_r_nb #(.WIDTH(WIDTH)) Buf_Reg (
+                .clk    (clk),
+                .rst_n  (rst_n),
+                .en     (reg_en),
+                .d      (syn_buf_in[i]),
+                .q      (syn_buf_out[i])
+            );
+        end
+    endgenerate
+
+    // --- 2.
+    genvar j;
+    generate
+        for (j=0; j<ORDER+1; j++) begin : SYN_WDW_GEN
+            if (j == 0) begin
+                mux_2_nb #(.WIDTH(WIDTH)) Wdw_Mux (
+                    .d0 (syn_buf_out[1]),
+                    .d1 (syn_in[0]),
+                    .s  (init),
+                    .y  (syn_wdw_in[0])
+                );
+            end
+            else begin
+                mux_2_nb #(.WIDTH(WIDTH)) Wdw_Mux (
+                    .d0 (syn_wdw_out[j-1]),
+                    .d1 (WIDTH'('d0)),
+                    .s  (init),
+                    .y  (syn_wdw_in[j])
+                );
+            end
 
             flop_r_nb #(.WIDTH(WIDTH)) Wdw_Reg (
                 .clk    (clk),
                 .rst_n  (rst_n),
                 .en     (reg_en),
-                .d      (syn_wdw_in[i]),
-                .q      (syn_wdw_out[i])
+                .d      (syn_wdw_in[j]),
+                .q      (syn_wdw_out[j])
             );
         end
-
     endgenerate
 
-    genvar j;
-    generate
-        for (j=0; j<ORDER+1; j++) begin : OUT_WDW_GEN
-            assign syn_wdw[j] = syn_wdw_out[j];
-        end
-    endgenerate
+    assign syn_wdw = syn_wdw_out;
 
 endmodule:rs_dec_kes_wdw
 

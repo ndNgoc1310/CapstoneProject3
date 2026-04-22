@@ -13,9 +13,9 @@ module top #(
     input  logic       clk,        // Tín hiệu clock
     input  logic       rst_n,      // Tín hiệu reset, active low
     input  logic       start_demo, // Xung kích hoạt chạy 1 gói tin
-    input  logic [1:0] demo_sel,   // 00: 0 lỗi, 01: 5 lỗi, 10: 15 lỗi, 11: 16 lỗi
-    output logic [4:0] injected_err_cnt,
-    output logic [4:0] corrected_err_cnt,
+    input  logic [2:0] demo_sel,   // 00: 0 lỗi, 01: 5 lỗi, 10: 15 lỗi, 11: 16 lỗi
+    output logic [9:0] injected_err_cnt,
+    output logic [9:0] corrected_err_cnt,
     output logic       demo_done,
     output logic       demo_success,
     output logic       demo_fail
@@ -34,7 +34,7 @@ module top #(
     enum logic {IDLE, SEND} state;
 
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
+        if (~rst_n) begin
             state       <= IDLE;
             msg_ptr     <= '0;
             msg_valid   <= 1'b0;
@@ -96,16 +96,16 @@ module top #(
         err_mask = '0;
         injected_err_cnt = '0;
         case (demo_sel)
-            2'b01: begin 
+            3'b001: begin 
                 injected_err_cnt = 5;
                 if (inj_cnt == 10 || inj_cnt == 20 || inj_cnt == 30 || inj_cnt == 40 || inj_cnt == 50) 
                     err_mask = 10'h3FF;
             end
-            2'b10: begin
+            3'b010: begin
                 injected_err_cnt = 15;
                 if (inj_cnt >= 100 && inj_cnt <= 114) err_mask = 10'h3FF;
             end
-            2'b11: begin
+            3'b011: begin
                 injected_err_cnt = 16;
                 if (inj_cnt >= 100 && inj_cnt <= 115) err_mask = 10'h3FF;
             end

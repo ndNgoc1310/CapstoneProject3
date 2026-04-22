@@ -15,8 +15,8 @@ module rs_dec_forney
     logic [WIDTH-1:0] err_mag_raw;
 
     gf_inv L_Val_Der_Inv (
-        .x  (l_val_der),
-        .y  (l_val_der_inv)
+        .x      (l_val_der),
+        .x_inv  (l_val_der_inv)
     );
 
     gf_mul Err_Mag_Mul (

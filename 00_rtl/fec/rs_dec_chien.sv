@@ -14,6 +14,7 @@ module rs_dec_chien
     output logic err_flg,
     output logic [WIDTH-1:0] l_val_der,
     output logic [WIDTH-1:0] o_val,
+    output logic sop_out,
     output logic valid_out,
     output logic ready,
     output logic error
@@ -66,6 +67,7 @@ module rs_dec_chien
         .init       (init),
         .reg_en     (reg_en),
         .cnt_en     (cnt_en),
+        .sop_out    (sop_out),
         .valid_out  (valid_out),
         .ready      (ready),
         .error      (error)
@@ -291,6 +293,7 @@ module rs_dec_chien_ctrl
     output logic init,
     output logic reg_en,
     output logic cnt_en,
+    output logic sop_out,
     output logic valid_out,
     output logic ready,
     output logic error
@@ -299,8 +302,9 @@ module rs_dec_chien_ctrl
     // Định nghĩa các trạng thái của FSM
     typedef enum logic [2:0] {
         IDLE,   
-        INIT,   
-        CALC,   
+        INIT, 
+        CALC1,  
+        CALC2,   
         DONE,   
         ERROR   
     } state_t;
@@ -314,6 +318,7 @@ module rs_dec_chien_ctrl
                 init        = 1'b0;
                 reg_en      = 1'b0;
                 cnt_en      = 1'b0;
+                sop_out     = 1'b0;
                 valid_out   = 1'b0;
                 ready       = 1'b1;  
                 error       = 1'b0; 
@@ -323,15 +328,27 @@ module rs_dec_chien_ctrl
                 init        = 1'b1;
                 reg_en      = 1'b1;
                 cnt_en      = 1'b1;
+                sop_out     = 1'b0;
                 valid_out   = 1'b0;
                 ready       = 1'b0;  
                 error       = 1'b0; 
             end
 
-            CALC: begin
+            CALC1: begin
                 init        = 1'b0;
                 reg_en      = 1'b1;
                 cnt_en      = 1'b1;
+                sop_out     = 1'b1;
+                valid_out   = 1'b1;
+                ready       = 1'b0;  
+                error       = 1'b0; 
+            end
+
+            CALC2: begin
+                init        = 1'b0;
+                reg_en      = 1'b1;
+                cnt_en      = 1'b1;
+                sop_out     = 1'b0;
                 valid_out   = 1'b1;
                 ready       = 1'b0;  
                 error       = 1'b0; 
@@ -341,6 +358,7 @@ module rs_dec_chien_ctrl
                 init        = 1'b0;
                 reg_en      = 1'b0;
                 cnt_en      = 1'b0;
+                sop_out     = 1'b0;
                 valid_out   = 1'b0; 
                 ready       = 1'b1;  
                 error       = 1'b0; 
@@ -350,6 +368,7 @@ module rs_dec_chien_ctrl
                 init        = 1'b0;
                 reg_en      = 1'b0;
                 cnt_en      = 1'b0;
+                sop_out     = 1'b0;
                 valid_out   = 1'b0; 
                 ready       = 1'b1;  
                 error       = 1'b1; 
@@ -359,6 +378,7 @@ module rs_dec_chien_ctrl
                 init        = 1'b0;
                 reg_en      = 1'b0;
                 cnt_en      = 1'b0;
+                sop_out     = 1'b0;
                 valid_out   = 1'b0; 
                 ready       = 1'b1;  
                 error       = 1'b1; 
@@ -375,13 +395,18 @@ module rs_dec_chien_ctrl
                 end
 
                 INIT: begin
-                    if (~valid_in)  state_next = CALC;
+                    if (~valid_in)  state_next = CALC1;
                     else            state_next = ERROR;
                 end
 
-                CALC: begin
+                CALC1: begin
+                    if (~valid_in)  state_next = CALC2;
+                    else            state_next = ERROR;
+                end
+
+                CALC2: begin
                     if (~valid_in & cnt_end)        state_next = DONE;
-                    else if (~valid_in & ~cnt_end)  state_next = CALC;
+                    else if (~valid_in & ~cnt_end)  state_next = CALC2;
                     else                            state_next = ERROR;
                 end
 

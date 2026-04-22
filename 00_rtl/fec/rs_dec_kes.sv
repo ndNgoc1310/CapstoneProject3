@@ -358,7 +358,7 @@ module rs_dec_kes_br
     logic dis_neq_0;
 
     // --- 1. 
-    add_sub_nb #(.WIDTH(CNT_WIDTH)) Len_Add (
+    add_sub_nb #(.WIDTH(CNT_WIDTH)) Len_Sub (
         .a      (cnt_nxt),
         .b      (len_out),   
         .cin    (1'b1),

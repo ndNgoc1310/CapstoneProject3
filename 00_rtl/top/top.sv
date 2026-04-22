@@ -10,15 +10,17 @@ module top #(
     parameter ORDER = 15,
     parameter K     = 544  // Codeword length (N)
 ) (
-    input  logic       clk,        // Tín hiệu clock
-    input  logic       rst_n,      // Tín hiệu reset, active low
-    input  logic       start_demo, // Xung kích hoạt chạy 1 gói tin
-    input  logic [2:0] demo_sel,   // 00: 0 lỗi, 01: 5 lỗi, 10: 15 lỗi, 11: 16 lỗi
-    output logic [9:0] injected_err_cnt,
-    output logic [9:0] corrected_err_cnt,
-    output logic       demo_done,
-    output logic       demo_success,
-    output logic       demo_fail
+    input  logic        clk,        // Tín hiệu clock
+    input  logic        rst_n,      // Tín hiệu reset, active low
+    input  logic        start_demo, // Xung kích hoạt chạy 1 gói tin
+    input  logic [2:0]  demo_sel,   // 00: 0 lỗi, 01: 5 lỗi, 10: 15 lỗi, 11: 16 lỗi
+    output logic [9:0]  injected_err_cnt,
+    output logic [9:0]  corrected_err_cnt,
+    output logic        ready,
+    output logic        error,
+    output logic        demo_done,
+    output logic        demo_success,
+    output logic        demo_fail
 );
 
     // ---------------------------------------------------------
@@ -63,9 +65,11 @@ module top #(
     // ---------------------------------------------------------
     // 2. BLOCK 2: RS Encoder Instantiation
     // ---------------------------------------------------------
-    logic [WIDTH-1:0] enc_data;
-    logic             enc_valid;
-    logic             enc_sop;
+    logic [WIDTH-1:0]   enc_data;
+    logic               enc_valid;
+    logic               enc_sop;
+    logic               enc_ready;
+    logic               enc_error;
 
     rs_enc #(.WIDTH(WIDTH), .NSYM(NSYM)) u_rs_enc (
         .clk        (clk),
@@ -76,7 +80,9 @@ module top #(
 
         .data_out   (enc_data),
         .val_out    (enc_valid),
-        .sop_out    (enc_sop)
+        .sop_out    (enc_sop),
+        .ready      (enc_ready),
+        .error      (enc_error)
     );
 
     // ---------------------------------------------------------
@@ -118,20 +124,23 @@ module top #(
     // ---------------------------------------------------------
     // 4. BLOCK 4: RS Decoder Instantiation
     // ---------------------------------------------------------
-    logic [WIDTH-1:0] dec_data;
-    logic             dec_valid;
-    logic             dec_sop;
-    logic             dec_error;
+    logic [WIDTH-1:0]   dec_data;
+    logic               dec_valid;
+    logic               dec_sop;
+    logic               dec_ready;
+    logic               dec_error;
 
-    rs_dec #(.WIDTH(WIDTH), .NSYM(NSYM)) u_rs_dec (
+    rs_dec #(.WIDTH(WIDTH), .NSYM(NSYM), .ORDER(ORDER), .K(K)) u_rs_dec (
         .clk        (clk),
         .rst_n      (rst_n),
         .sop_in     (enc_sop),
-        .val_in     (enc_valid),     
+        .valid_in   (enc_valid),     
         .data_in    (corrupted_data),
         .sop_out    (dec_sop),
         .valid_out  (dec_valid),
-        .data_out   (dec_data)
+        .data_out   (dec_data),
+        .ready      (dec_ready),
+        .error      (dec_error)
     );
 
     // ---------------------------------------------------------
@@ -159,7 +168,14 @@ module top #(
             rd_ptr <= (dec_sop) ? 10'd542 : rd_ptr - 1'b1;
         end else rd_ptr <= 10'd543;
     end
-    assign ram_data_out = cmp_ram[rd_ptr];
+
+    // assign ram_data_out = cmp_ram[rd_ptr];
+
+    always_ff @(posedge clk) begin
+        if (dec_valid) begin
+            ram_data_out <= cmp_ram[rd_ptr];
+        end
+    end
 
     // Delay 1 nhịp để khớp độ trễ RAM
     always_ff @(posedge clk) begin
@@ -197,5 +213,8 @@ module top #(
             demo_success <= !dec_error;
         end
     end
+
+    assign error = enc_error | dec_error;
+    assign ready = enc_ready & dec_ready;
 
 endmodule:top

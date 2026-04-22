@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 // =========================================================
-// Testbench for Chien Search & Forney Evaluator (rs_dec_chien)
+// Testbench for Chien Search (rs_dec_chien)
 // Simulator: Cadence Xcelium
 // Cycle-accurate Auto-checking with Python Golden Vectors
 // =========================================================
@@ -21,8 +21,8 @@ module rs_dec_chien_tb;
     // DUT Inputs
     // Lưu ý: Dùng 2D Packed Array để tương thích 100% với Xcelium
     logic valid_in;
-    logic [ORDER:0][WIDTH-1:0] lam_in;
-    logic [ORDER:0][WIDTH-1:0] ome_in;
+    logic [WIDTH-1:0] lam_in [ORDER:0];
+    logic [WIDTH-1:0] ome_in [ORDER:0];
 
     // DUT Outputs
     logic err_flg;
@@ -89,7 +89,7 @@ module rs_dec_chien_tb;
     // 4. WATCHDOG TIMER (ANTI-DEADLOCK)
     // ---------------------------------------------------------
     initial begin
-        #500000; // Timeout sau 500us
+        #2000000; // Timeout sau 2ms (1 case = 544 + 2 = 546 cycles -> 546 * 100 cases * 10 ns = 546 us)
         $display("\n[%0t] FATAL ERROR: Watchdog Timer Triggered!", $time);
         $display("FSM is likely stuck. Dumping waveforms and terminating.");
         $finish;
@@ -100,7 +100,7 @@ module rs_dec_chien_tb;
     // ---------------------------------------------------------
     initial begin
         $shm_open("waves.shm"); 
-        $shm_probe("AC");       
+        $shm_probe("ACM");       
     end
 
     // ---------------------------------------------------------
@@ -109,8 +109,8 @@ module rs_dec_chien_tb;
     initial begin
         // Init signals
         valid_in = 1'b0;
-        lam_in = '0;
-        ome_in = '0;
+        for (int i = 0; i < ORDER+1; i++) lam_in[i] = '0;
+        for (int i = 0; i < ORDER+1; i++) ome_in[i] = '0;
 
         // Open Files
         in_fd  = $fopen("rs_dec_chien_in.hex", "r");
@@ -191,6 +191,18 @@ module rs_dec_chien_tb;
                               c, exp_err_flg, exp_l_val_der, exp_o_val, err_flg, l_val_der, o_val);
                     $fdisplay(log_fd, "  [MISMATCH] Cycle %0d | Exp: err=%b l_der=%x o_val=%x | Act: err=%b l_der=%x o_val=%x", 
                               c, exp_err_flg, exp_l_val_der, exp_o_val, err_flg, l_val_der, o_val);
+                end
+
+                if (c == 0 && sop_out !== 1'b1) begin
+                    mismatch = 1;
+                    $display("  [ERROR] Cycle %0d: SOP_OUT not asserted!", c);
+                    $fdisplay(log_fd, "  [ERROR] Cycle %0d: SOP_OUT not asserted!", c);
+                end
+                
+                if (c > 0 && sop_out !== 1'b0) begin
+                    mismatch = 1;
+                    $display("  [ERROR] Cycle %0d: SOP_OUT is high but should be 0!", c);
+                    $fdisplay(log_fd, "  [ERROR] Cycle %0d: SOP_OUT is high but should be 0!", c);
                 end
 
                 // Đợi nhịp Clock tiếp theo (trừ vòng lặp cuối cùng)

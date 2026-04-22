@@ -1,0 +1,83 @@
+
+#
+# Mnemonic Maps
+#
+mmap new  -reuse -name {Boolean as Logic} -radix %b -contents {{%c=FALSE -edgepriority 1 -shape low}
+{%c=TRUE -edgepriority 1 -shape high}}
+mmap new  -reuse -name {Example Map} -radix %x -contents {{%b=11???? -bgcolor orange -label REG:%x -linecolor yellow -shape bus}
+{%x=1F -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=2C -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=* -label %x -linecolor gray -shape bus}}
+
+array unset createdGroup
+array set createdGroup {}
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.clk}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.rst_n}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.DUT.push_sop}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.DUT.push_en}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.DUT.data_in[9:0]}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.DUT.pop_sop}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.DUT.pop_en}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.DUT.valid_out}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.DUT.data_out[9:0]}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.DUT.wr_addr[9:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.DUT.wr_ptr[9:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.DUT.rd_addr[9:0]}]}
+	} ]]
+waveform format $id -radix %d -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.DUT.rd_ptr[9:0]}]}
+	} ]]
+waveform format $id -radix %d -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.test_idx}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.pass_cnt}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.fail_cnt}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_dec_lifo_tb.mismatch}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+
+waveform xview limits 0 250ns

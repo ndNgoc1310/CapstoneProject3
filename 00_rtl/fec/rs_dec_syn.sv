@@ -260,7 +260,7 @@ module rs_dec_syn_ctrl
                 reg_en      = (sop_in & valid_in) ? 1'b1 : 1'b0;    // Bật enable NGAY LẬP TỨC ở nhịp có SOP (Mealy Machine)
                 count_en    = (sop_in & valid_in) ? 1'b1 : 1'b0;    // Bật enable NGAY LẬP TỨC ở nhịp có SOP (Mealy Machine)
                 control     = 1'b0;     // control = 0 để nạp thẳng r0
-                ready       = 1'b1;     // Sẵn sàng nhận dữ liệu mới sau reset
+                ready       = (sop_in & valid_in) ? 1'b0 : 1'b1;    // Có thể hạ ready xuống 0 ngay lập tức nếu có data vào
                 error       = 1'b0;     // Không có lỗi khi reset
             end
 
@@ -282,22 +282,22 @@ module rs_dec_syn_ctrl
                 error       = 1'b0;
             end
 
-            ERROR: begin
+            ERROR: begin // Mealy Action: Chộp data ngay lập tức nếu có gói tin mới đập vào
                 valid_out   = 1'b0;
-                reg_en      = 1'b0;
-                count_en    = 1'b0;
-                control     = 1'b0;
-                ready       = 1'b1;     // Sẵn sàng nhận dữ liệu mới sau khi đã hoàn thành gói tin
-                error       = 1'b1;     // Báo lỗi nếu có tín hiệu không hợp lệ khi đang ở trạng thái IDLE hoặc CALC
+                reg_en      = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                count_en    = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                control     = 1'b0; 
+                ready       = (sop_in & valid_in) ? 1'b0 : 1'b1; // Có thể hạ ready xuống 0 ngay lập tức nếu có data vào
+                error       = 1'b1; // Vẫn báo cờ lỗi ở nhịp này để testbench nhận biết
             end
 
-            default: begin
+            default: begin // ERROR
                 valid_out   = 1'b0;
-                reg_en      = 1'b0;
-                count_en    = 1'b0;
-                control     = 1'b0;
-                ready       = 1'b1;     // Sẵn sàng nhận dữ liệu mới sau khi đã hoàn thành gói tin
-                error       = 1'b1;     // Báo lỗi nếu có trạng thái không xác định
+                reg_en      = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                count_en    = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                control     = 1'b0; 
+                ready       = (sop_in & valid_in) ? 1'b0 : 1'b1; // Có thể hạ ready xuống 0 ngay lập tức nếu có data vào
+                error       = 1'b1; // Vẫn báo cờ lỗi ở nhịp này để testbench nhận biết
             end
         endcase
     end

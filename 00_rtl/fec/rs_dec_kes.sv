@@ -44,7 +44,7 @@ module rs_dec_kes
         .lam_out    (lam_out)
     );
 
-    rs_dec_kes_ome #(.WIDTH(WIDTH), .ORDER(ORDER)) Ome_Dpath (
+    rs_dec_kes_ome #(.WIDTH(WIDTH), .ORDER(ORDER), .NSYM(NSYM)) Ome_Dpath (
         .clk        (clk),
         .rst_n      (rst_n),
         .delta      (delta),
@@ -52,6 +52,7 @@ module rs_dec_kes
         .reg_en     (reg_en),
         .dis_out    (dis_out),
         .gam_out    (gam_out),
+        .syn_in     (syn_in),
 
         .ome_out    (ome_out)
     );
@@ -163,6 +164,7 @@ endmodule:rs_dec_kes_lam
 module rs_dec_kes_ome 
 #(
     parameter WIDTH = 10,
+    parameter NSYM = 30,
     parameter ORDER = 15
 )
 (
@@ -173,6 +175,7 @@ module rs_dec_kes_ome
     input logic reg_en,
     input logic [WIDTH-1:0] dis_out,
     input logic [WIDTH-1:0] gam_out,
+    input logic [WIDTH-1:0] syn_in [NSYM-1:0],
 
     output logic [WIDTH-1:0] ome_out [ORDER:0]
 );
@@ -191,6 +194,8 @@ module rs_dec_kes_ome
                 .reg_en         (reg_en),
                 .dis_out        (dis_out),
                 .gam_out        (gam_out),
+                .syn_in         (syn_in[i]),
+                .syn_in_prv     (i == 0 ? WIDTH'('d0) : syn_in[i-1]),
                 .ome_out_prv    (i == 0 ? WIDTH'('b0) : ome_out[i-1]),
                 .o_aux_out_prv  (i == 0 ? WIDTH'('b0) : o_aux_out[i-1]),
                 .is_pe_0        (i == 0),
@@ -474,9 +479,8 @@ module rs_dec_kes_ctrl
 );
 
     // Định nghĩa các trạng thái của FSM
-    typedef enum logic [2:0] {
+    typedef enum logic [1:0] {
         IDLE,   
-        INIT,   
         CALC,   
         DONE,   
         ERROR   
@@ -488,23 +492,14 @@ module rs_dec_kes_ctrl
     always_comb begin
         case (state_current)
             IDLE: begin
-                init        = 1'b0;
-                reg_en      = 1'b0;
-                len_en      = 1'b0;
-                cnt_en      = 1'b0;
+                // Mealy Action: Bắt tín hiệu và nạp data NGAY LẬP TỨC ở nhịp có valid_in
+                init        = valid_in ? 1'b1 : 1'b0;
+                reg_en      = valid_in ? 1'b1 : 1'b0;
+                len_en      = valid_in ? 1'b1 : 1'b0;
+                cnt_en      = valid_in ? 1'b1 : 1'b0;
                 valid_out   = 1'b0;
-                ready       = 1'b1;  
-                error       = 1'b0; 
-            end
-
-            INIT: begin
-                init        = 1'b1;
-                reg_en      = 1'b1;
-                len_en      = 1'b1;
-                cnt_en      = 1'b1;
-                valid_out   = 1'b0;
-                ready       = 1'b0;  
-                error       = 1'b0; 
+                ready       = valid_in ? 1'b0 : 1'b1;
+                error       = 1'b0;
             end
 
             CALC: begin
@@ -528,23 +523,27 @@ module rs_dec_kes_ctrl
             end
 
             ERROR: begin
-                init        = 1'b0;
-                reg_en      = 1'b0;
-                len_en      = 1'b0;
-                cnt_en      = 1'b0;
-                valid_out   = 1'b0; 
-                ready       = 1'b1;  
-                error       = 1'b1; 
+                // Mealy Action: Bắt tín hiệu và nạp data NGAY LẬP TỨC giống IDLE
+                // Nhưng vẫn giữ cờ error = 1 để hệ thống biết nó vừa thoát từ trạng thái lỗi
+                init        = valid_in ? 1'b1 : 1'b0;
+                reg_en      = valid_in ? 1'b1 : 1'b0;
+                len_en      = valid_in ? 1'b1 : 1'b0;
+                cnt_en      = valid_in ? 1'b1 : 1'b0;
+                valid_out   = 1'b0;
+                ready       = valid_in ? 1'b0 : 1'b1; 
+                error       = 1'b1; // Vẫn giữ 1'b1 ở nhịp này
             end
 
-            default: begin
-                init        = 1'b0;
-                reg_en      = 1'b0;
-                len_en      = 1'b0;
-                cnt_en      = 1'b0;
-                valid_out   = 1'b0; 
-                ready       = 1'b1;  
-                error       = 1'b1; 
+            default: begin // ERROR
+                // Mealy Action: Bắt tín hiệu và nạp data NGAY LẬP TỨC giống IDLE
+                // Nhưng vẫn giữ cờ error = 1 để hệ thống biết nó vừa thoát từ trạng thái lỗi
+                init        = valid_in ? 1'b1 : 1'b0;
+                reg_en      = valid_in ? 1'b1 : 1'b0;
+                len_en      = valid_in ? 1'b1 : 1'b0;
+                cnt_en      = valid_in ? 1'b1 : 1'b0;
+                valid_out   = 1'b0;
+                ready       = valid_in ? 1'b0 : 1'b1; 
+                error       = 1'b1; // Vẫn giữ 1'b1 ở nhịp này
             end
         endcase
     end
@@ -553,13 +552,8 @@ module rs_dec_kes_ctrl
     always_comb begin
         case (state_current)
                 IDLE: begin
-                    if (valid_in)   state_next = INIT;
+                    if (valid_in)   state_next = CALC;
                     else            state_next = IDLE;
-                end
-
-                INIT: begin
-                    if (~valid_in)  state_next = CALC;
-                    else            state_next = ERROR;
                 end
 
                 CALC: begin
@@ -569,12 +563,12 @@ module rs_dec_kes_ctrl
                 end
 
                 DONE: begin
-                    if (valid_in)   state_next = INIT;
-                    else            state_next = IDLE;
+                    if (~valid_in)   state_next = IDLE;
+                    else            state_next = ERROR;
                 end
 
                 ERROR: begin
-                    if (valid_in)   state_next = INIT;
+                    if (valid_in)   state_next = CALC;
                     else            state_next = IDLE;
                 end
 
@@ -709,6 +703,8 @@ module rs_dec_kes_ome_pe_i
     input logic [WIDTH-1:0] gam_out,
     input logic [WIDTH-1:0] ome_out_prv,
     input logic [WIDTH-1:0] o_aux_out_prv,
+    input logic [WIDTH-1:0] syn_in,
+    input logic [WIDTH-1:0] syn_in_prv,
     input logic is_pe_0,
 
     output logic [WIDTH-1:0] ome_out,
@@ -728,7 +724,7 @@ module rs_dec_kes_ome_pe_i
     // --- 1. Omega Register ---
     mux_2_nb #(.WIDTH(WIDTH)) Ome_Mux (
         .d0 (ome_new),
-        .d1 ({(WIDTH-1)'('b0), is_pe_0}),
+        .d1 (syn_in),
         .s  (init),
         .y  (ome_in)
     );
@@ -772,7 +768,7 @@ module rs_dec_kes_ome_pe_i
 
     mux_2_nb #(.WIDTH(WIDTH)) O_Aux_Mux_2 (
         .d0 (o_aux_mux_1),
-        .d1 (WIDTH'('d0)),
+        .d1 (is_pe_0 ? WIDTH'('d0) : syn_in_prv),
         .s  (init),
         .y  (o_aux_mux_2)
     );

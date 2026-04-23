@@ -123,21 +123,21 @@ module rs_dec_chien_lam
     endgenerate
 
     assign l_val_out_mul[0] = l_val_out[0];
-    gf_mul_const_alpha1  u1  (.a(l_val_out[1]),  .p(l_val_out_mul[1]));
-    gf_mul_const_alpha2  u2  (.a(l_val_out[2]),  .p(l_val_out_mul[2]));
-    gf_mul_const_alpha3  u3  (.a(l_val_out[3]),  .p(l_val_out_mul[3]));
-    gf_mul_const_alpha4  u4  (.a(l_val_out[4]),  .p(l_val_out_mul[4]));
-    gf_mul_const_alpha5  u5  (.a(l_val_out[5]),  .p(l_val_out_mul[5]));
-    gf_mul_const_alpha6  u6  (.a(l_val_out[6]),  .p(l_val_out_mul[6]));
-    gf_mul_const_alpha7  u7  (.a(l_val_out[7]),  .p(l_val_out_mul[7]));
-    gf_mul_const_alpha8  u8  (.a(l_val_out[8]),  .p(l_val_out_mul[8]));
-    gf_mul_const_alpha9  u9  (.a(l_val_out[9]),  .p(l_val_out_mul[9]));
-    gf_mul_const_alpha10 u10 (.a(l_val_out[10]), .p(l_val_out_mul[10]));
-    gf_mul_const_alpha11 u11 (.a(l_val_out[11]), .p(l_val_out_mul[11]));
-    gf_mul_const_alpha12 u12 (.a(l_val_out[12]), .p(l_val_out_mul[12]));
-    gf_mul_const_alpha13 u13 (.a(l_val_out[13]), .p(l_val_out_mul[13]));
-    gf_mul_const_alpha14 u14 (.a(l_val_out[14]), .p(l_val_out_mul[14]));
-    gf_mul_const_alpha15 u15 (.a(l_val_out[15]), .p(l_val_out_mul[15]));
+    gf_mul_const_alpha_inv1  u1  (.a(l_val_out[1]),  .p(l_val_out_mul[1]));
+    gf_mul_const_alpha_inv2  u2  (.a(l_val_out[2]),  .p(l_val_out_mul[2]));
+    gf_mul_const_alpha_inv3  u3  (.a(l_val_out[3]),  .p(l_val_out_mul[3]));
+    gf_mul_const_alpha_inv4  u4  (.a(l_val_out[4]),  .p(l_val_out_mul[4]));
+    gf_mul_const_alpha_inv5  u5  (.a(l_val_out[5]),  .p(l_val_out_mul[5]));
+    gf_mul_const_alpha_inv6  u6  (.a(l_val_out[6]),  .p(l_val_out_mul[6]));
+    gf_mul_const_alpha_inv7  u7  (.a(l_val_out[7]),  .p(l_val_out_mul[7]));
+    gf_mul_const_alpha_inv8  u8  (.a(l_val_out[8]),  .p(l_val_out_mul[8]));
+    gf_mul_const_alpha_inv9  u9  (.a(l_val_out[9]),  .p(l_val_out_mul[9]));
+    gf_mul_const_alpha_inv10 u10 (.a(l_val_out[10]), .p(l_val_out_mul[10]));
+    gf_mul_const_alpha_inv11 u11 (.a(l_val_out[11]), .p(l_val_out_mul[11]));
+    gf_mul_const_alpha_inv12 u12 (.a(l_val_out[12]), .p(l_val_out_mul[12]));
+    gf_mul_const_alpha_inv13 u13 (.a(l_val_out[13]), .p(l_val_out_mul[13]));
+    gf_mul_const_alpha_inv14 u14 (.a(l_val_out[14]), .p(l_val_out_mul[14]));
+    gf_mul_const_alpha_inv15 u15 (.a(l_val_out[15]), .p(l_val_out_mul[15]));
 
     // --- 2.
     xor_tree_nb #(.WIDTH(WIDTH), .N(ORDER+1)) L_Val_Xor (
@@ -207,21 +207,21 @@ module rs_dec_chien_ome
     endgenerate
 
     assign o_val_out_mul[0] = o_val_out[0];
-    gf_mul_const_alpha1  u1  (.a(o_val_out[1]),  .p(o_val_out_mul[1]));
-    gf_mul_const_alpha2  u2  (.a(o_val_out[2]),  .p(o_val_out_mul[2]));
-    gf_mul_const_alpha3  u3  (.a(o_val_out[3]),  .p(o_val_out_mul[3]));
-    gf_mul_const_alpha4  u4  (.a(o_val_out[4]),  .p(o_val_out_mul[4]));
-    gf_mul_const_alpha5  u5  (.a(o_val_out[5]),  .p(o_val_out_mul[5]));
-    gf_mul_const_alpha6  u6  (.a(o_val_out[6]),  .p(o_val_out_mul[6]));
-    gf_mul_const_alpha7  u7  (.a(o_val_out[7]),  .p(o_val_out_mul[7]));
-    gf_mul_const_alpha8  u8  (.a(o_val_out[8]),  .p(o_val_out_mul[8]));
-    gf_mul_const_alpha9  u9  (.a(o_val_out[9]),  .p(o_val_out_mul[9]));
-    gf_mul_const_alpha10 u10 (.a(o_val_out[10]), .p(o_val_out_mul[10]));
-    gf_mul_const_alpha11 u11 (.a(o_val_out[11]), .p(o_val_out_mul[11]));
-    gf_mul_const_alpha12 u12 (.a(o_val_out[12]), .p(o_val_out_mul[12]));
-    gf_mul_const_alpha13 u13 (.a(o_val_out[13]), .p(o_val_out_mul[13]));
-    gf_mul_const_alpha14 u14 (.a(o_val_out[14]), .p(o_val_out_mul[14]));
-    gf_mul_const_alpha15 u15 (.a(o_val_out[15]), .p(o_val_out_mul[15]));
+    gf_mul_const_alpha_inv1  u1  (.a(o_val_out[1]),  .p(o_val_out_mul[1]));
+    gf_mul_const_alpha_inv2  u2  (.a(o_val_out[2]),  .p(o_val_out_mul[2]));
+    gf_mul_const_alpha_inv3  u3  (.a(o_val_out[3]),  .p(o_val_out_mul[3]));
+    gf_mul_const_alpha_inv4  u4  (.a(o_val_out[4]),  .p(o_val_out_mul[4]));
+    gf_mul_const_alpha_inv5  u5  (.a(o_val_out[5]),  .p(o_val_out_mul[5]));
+    gf_mul_const_alpha_inv6  u6  (.a(o_val_out[6]),  .p(o_val_out_mul[6]));
+    gf_mul_const_alpha_inv7  u7  (.a(o_val_out[7]),  .p(o_val_out_mul[7]));
+    gf_mul_const_alpha_inv8  u8  (.a(o_val_out[8]),  .p(o_val_out_mul[8]));
+    gf_mul_const_alpha_inv9  u9  (.a(o_val_out[9]),  .p(o_val_out_mul[9]));
+    gf_mul_const_alpha_inv10 u10 (.a(o_val_out[10]), .p(o_val_out_mul[10]));
+    gf_mul_const_alpha_inv11 u11 (.a(o_val_out[11]), .p(o_val_out_mul[11]));
+    gf_mul_const_alpha_inv12 u12 (.a(o_val_out[12]), .p(o_val_out_mul[12]));
+    gf_mul_const_alpha_inv13 u13 (.a(o_val_out[13]), .p(o_val_out_mul[13]));
+    gf_mul_const_alpha_inv14 u14 (.a(o_val_out[14]), .p(o_val_out_mul[14]));
+    gf_mul_const_alpha_inv15 u15 (.a(o_val_out[15]), .p(o_val_out_mul[15]));
 
     // --- 2.
     xor_tree_nb #(.WIDTH(WIDTH), .N(ORDER+1)) O_Val_Xor (

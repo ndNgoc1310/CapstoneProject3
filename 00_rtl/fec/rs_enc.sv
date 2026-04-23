@@ -235,8 +235,7 @@ module rs_enc_ctrl
     // Định nghĩa các trạng thái của FSM
     typedef enum logic [2:0] {
         IDLE,   // Trạng thái nghỉ, sẵn sàng nhận gói tin mới  
-        MSG1,   // Trạng thái nhận và xuất symbols dữ liệu (message), sop_out chỉ được đánh dấu ở symbol đầu tiên
-        MSG2,   // Trạng thái tiếp tục nhận và xuất symbols dữ liệu (message) sau symbol đầu tiên
+        MSG,    // Trạng thái nhận và xuất symbols dữ liệu (message), sop_out chỉ được đánh dấu ở symbol đầu tiên
         PARITY, // Trạng thái xuất symbols parity sau khi đã xuất hết 514 symbols dữ liệu
         DONE,   // Trạng thái xuất symbol parity cuối cùng và sẵn sàng nhận gói tin mới
         ERROR   // Trạng thái lỗi khi nhận được tín hiệu không hợp lệ (ví dụ sop_in hoặc valid_in không đúng) trong quá trình IDLE hoặc MSG
@@ -247,28 +246,17 @@ module rs_enc_ctrl
     // --- 1. FSM State Output Logic ---
     always_comb begin
         case (state_current)
-            IDLE: begin
-                sop_out     = 1'b0;     // Không đánh dấu bắt đầu gói tin ra khi ở trạng thái IDLE 
-                valid_out   = 1'b0;     // Dữ liệu đầu ra không có giá trị khi ở trạng thái IDLE
-                reg_en      = 1'b0;       // Không enable bất kỳ thanh ghi LFSR nào khi ở trạng thái IDLE
-                count_en    = 1'b0;     // Không enable bộ đếm khi ở trạng thái IDLE
-                control     = 1'b0;     // Không quan tâm về control khi ở trạng thái IDLE, mặc định là 0
-                ready       = 1'b1;     // Sẵn sàng nhận gói tin mới khi ở trạng thái IDLE
-                error       = 1'b0;     // Không có lỗi khi ở trạng thái IDLE
+            IDLE: begin // Mealy Machine: Đáp ứng ngay lập tức (Zero-latency pass-through)
+                sop_out     = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                valid_out   = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                reg_en      = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                count_en    = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                control     = 1'b1; 
+                ready       = (sop_in & valid_in) ? 1'b0 : 1'b1; // Ép ready = 0 khi có dữ liệu vào để tránh trigger mạch reset bộ đếm
+                error       = 1'b0;
             end
 
-            MSG1: begin
-                sop_out     = 1'b1;     // Chỉ đánh dấu sop_out ở symbol đầu tiên của message
-                valid_out   = 1'b1;     // Dữ liệu đầu ra có giá trị trong suốt quá trình xuất message
-                reg_en      = 1'b1;       // Enable tất cả các thanh ghi LFSR để cập nhật trong quá trình nhận message
-                count_en    = 1'b1;     // Enable bộ đếm khi ở trạng thái MSG1
-                control     = 1'b1;     // Bắt đầu với việc xuất message
-                control     = 1'b1;     // Bắt đầu với việc xuất message
-                ready       = 1'b0;     // Không sẵn sàng nhận dữ liệu mới khi đang xử lý message
-                error       = 1'b0;   
-            end
-
-            MSG2: begin
+            MSG: begin
                 sop_out     = 1'b0;     // Chỉ đánh dấu sop_out ở symbol đầu tiên, sau đó hạ xuống
                 valid_out   = 1'b1;   
                 reg_en      = 1'b1;
@@ -299,23 +287,23 @@ module rs_enc_ctrl
             end
 
             ERROR: begin
-                sop_out     = 1'b0;    
-                valid_out   = 1'b0;     // Dữ liệu đầu ra không có giá trị khi ở trạng thái lỗi
-                reg_en      = 1'b0;     // Không enable bất kỳ thanh ghi LFSR nào khi ở trạng thái lỗi
-                count_en    = 1'b0;     // Không enable bộ đếm khi ở trạng thái lỗi
-                control     = 1'b0;     // Không quan tâm về control khi ở trạng thái lỗi, mặc định là 0
-                ready       = 1'b1;     // Sẵn sàng nhận gói tin mới khi ở trạng thái lỗi để có thể phục hồi sau lỗi
-                error       = 1'b1;     // Báo hiệu lỗi khi ở trạng thái lỗi
+                sop_out     = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                valid_out   = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                reg_en      = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                count_en    = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                control     = 1'b1; 
+                ready       = (sop_in & valid_in) ? 1'b0 : 1'b1; // Ép ready = 0 khi có dữ liệu vào để tránh trigger mạch reset bộ đếm
+                error       = 1'b1; // Vẫn báo cờ lỗi ở nhịp này để testbench nhận biết
             end
 
-            default: begin
-                sop_out     = 1'b0;    
-                valid_out   = 1'b0;   
-                reg_en      = 1'b0; 
-                count_en    = 1'b0;
-                control     = 1'b0;    
-                ready       = 1'b1;   
-                error       = 1'b1;     // Báo hiệu lỗi nếu FSM rơi vào trạng thái không xác định
+            default: begin // ERROR
+                sop_out     = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                valid_out   = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                reg_en      = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                count_en    = (sop_in & valid_in) ? 1'b1 : 1'b0;
+                control     = 1'b1; 
+                ready       = (sop_in & valid_in) ? 1'b0 : 1'b1; // Ép ready = 0 khi có dữ liệu vào để tránh trigger mạch reset bộ đếm
+                error       = 1'b1; // Vẫn báo cờ lỗi ở nhịp này để testbench nhận biết
             end
         endcase
     end
@@ -325,18 +313,13 @@ module rs_enc_ctrl
         case (state_current)
                 IDLE: begin
                     if (~(sop_in | valid_in))   state_next = IDLE;      // Ở lại trạng thái IDLE nếu chưa có gói tin mới
-                    else if (sop_in & valid_in) state_next = MSG1;      // Khi sop_in và valid_in cùng lên cao, chuyển sang trạng thái MSG để bắt đầu xử lý gói tin
+                    else if (sop_in & valid_in) state_next = MSG;       // Khi sop_in và valid_in cùng lên cao, chuyển sang trạng thái MSG để bắt đầu xử lý gói tin
                     else                        state_next = ERROR;     // Nếu sop_in và valid_in không cùng lên cao, chuyển sang trạng thái lỗi ERROR
                 end
 
-                MSG1: begin
-                    if (~sop_in & valid_in) state_next = MSG2;  // Sau khi đã nhận được symbol đầu tiên của message, tiếp tục ở trạng thái MSG2 để nhận và xuất tiếp các symbols dữ liệu còn lại
-                    else                    state_next = ERROR; // Nếu sop_in vẫn còn cao sau khi đã nhận symbol đầu tiên, hoặc valid_in xuống thấp trước khi nhận được symbol đầu tiên, đều là tín hiệu không hợp lệ và chuyển sang trạng thái lỗi ERROR
-                end
-
-                MSG2: begin
-                    if ((~sop_in & valid_in) & ~count_parity)       state_next = MSG2;      // Tiếp tục ở lại trạng thái MSG2 nếu vẫn còn dữ liệu message và chưa nhận đủ 514 symbols (count = 514, bit 9 và bit 1 đều là 1)
-                    else if (~(sop_in | valid_in) & count_parity)   state_next = PARITY;    // Khi đã nhận đủ 514 symbols dữ liệu (count = 513, bit 9 và bit 0 đều là 1), chuyển sang trạng thái xuất parity
+                MSG: begin
+                    if ((~sop_in & valid_in) & ~count_parity)       state_next = MSG;       // Tiếp tục ở lại trạng thái MSG nếu vẫn còn dữ liệu message và chưa nhận đủ 514 symbols (count = 514, bit 9 và bit 1 đều là 1)
+                    else if ((~sop_in & valid_in) & count_parity)   state_next = PARITY;    // Khi đã nhận đủ 514 symbols dữ liệu (count = 513, bit 9 và bit 0 đều là 1), chuyển sang trạng thái xuất parity
                     else                                            state_next = ERROR;     // Nếu valid_in xuống thấp trước khi nhận đủ 514 symbols, hoặc sop_in vẫn còn cao sau khi đã nhận symbol đầu tiên, đều là tín hiệu không hợp lệ và chuyển sang trạng thái lỗi ERROR
                 end
 
@@ -347,13 +330,12 @@ module rs_enc_ctrl
                 end
 
                 DONE: begin
-                    if (sop_in & valid_in)          state_next = MSG1;  // Khi ở trạng thái DONE, nếu nhận được gói tin mới, chuyển sang trạng thái MSG1 để bắt đầu xử lý gói tin mới
-                    else if (~(sop_in | valid_in))  state_next = IDLE;  // Khi ở trạng thái DONE, nếu không nhận được gói tin mới, quay về trạng thái IDLE để sẵn sàng nhận gói tin mới
-                    else                            state_next = ERROR; // Nếu ở trạng thái DONE, nhưng tín hiệu sop_in và valid_in không hợp lệ (ví dụ sop_in lên cao mà valid_in không lên cao, hoặc ngược lại), chuyển sang trạng thái lỗi ERROR
+                    if (~(sop_in | valid_in))   state_next = IDLE;  // 
+                    else                        state_next = ERROR; // 
                 end
 
                 ERROR: begin
-                    if (sop_in & valid_in)          state_next = MSG1;  // Khi ở trạng thái lỗi, nếu nhận được gói tin mới, chuyển sang trạng thái MSG1 để bắt đầu xử lý gói tin mới
+                    if (sop_in & valid_in)          state_next = MSG;   // Khi ở trạng thái lỗi, nếu nhận được gói tin mới, chuyển sang trạng thái MSG để bắt đầu xử lý gói tin mới
                     else if (~(sop_in | valid_in))  state_next = IDLE;  // Khi ở trạng thái lỗi, nếu không nhận được gói tin mới, quay về trạng thái IDLE để sẵn sàng nhận gói tin mới
                     else                            state_next = ERROR; // Nếu ở trạng thái lỗi, nhưng tín hiệu sop_in và valid_in không hợp lệ (ví dụ sop_in lên cao mà valid_in không lên cao, hoặc ngược lại), vẫn ở lại trạng thái lỗi ERROR
                 end 

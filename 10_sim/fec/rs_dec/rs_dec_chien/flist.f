@@ -2,7 +2,7 @@
 
 ./../../../../00_rtl/common/cmm_nb.sv
 
-./../../../../00_rtl/fec/common/gf_mul_const_alpha.sv
+./../../../../00_rtl/fec/common/gf_mul_const_alpha_inv.sv
 
 ./../../../../00_rtl/fec/rs_dec_chien.sv
 

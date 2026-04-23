@@ -227,7 +227,8 @@ endmodule : rs_dec_syn_dpath_i
 // --------------------------------------------------------------
 
 // FSM Control Unit cho RS Decoder Syndrome Calculation
-module rs_dec_syn_ctrl (
+module rs_dec_syn_ctrl 
+(
     input  logic clk,
     input  logic rst_n,
     input  logic sop_in,     // Start of Packet (Bắt đầu gói tin)
@@ -242,10 +243,9 @@ module rs_dec_syn_ctrl (
 );
 
     // FSM State Definition
-    typedef enum logic [2:0] {
+    typedef enum logic [1:0] {
         IDLE,   // Chờ SOP
-        CALC1,  // Đang tính toán syndrome ở chu kỳ đầu tiên (chỉ nhận dữ liệu vào mà chưa thực hiện feedback)
-        CALC2,  // Đang tính toán syndrome ở các chu kỳ tiếp theo (đã thực hiện feedback)
+        CALC,   // Đang tính toán syndrome ở chu kỳ đầu tiên
         DONE,   // Đã hoàn thành tính toán syndrome sau khi nhận đủ N symbols
         ERROR   // Trạng thái lỗi nếu có tín hiệu không hợp lệ
     } state_t;
@@ -257,23 +257,14 @@ module rs_dec_syn_ctrl (
         case (state_current)
             IDLE: begin
                 valid_out   = 1'b0;     // Chỉ báo hiệu tính xong khi đã hoàn thành gói tin
-                reg_en      = 1'b0;     // Ban đầu không enable thanh ghi nào
-                count_en    = 1'b0;     // Ban đầu không enable bộ đếm
-                control     = 1'b0;     // Ban đầu không điều khiển gì cả
+                reg_en      = (sop_in & valid_in) ? 1'b1 : 1'b0;    // Bật enable NGAY LẬP TỨC ở nhịp có SOP (Mealy Machine)
+                count_en    = (sop_in & valid_in) ? 1'b1 : 1'b0;    // Bật enable NGAY LẬP TỨC ở nhịp có SOP (Mealy Machine)
+                control     = 1'b0;     // control = 0 để nạp thẳng r0
                 ready       = 1'b1;     // Sẵn sàng nhận dữ liệu mới sau reset
                 error       = 1'b0;     // Không có lỗi khi reset
             end
 
-            CALC1: begin
-                valid_out   = 1'b0;
-                reg_en      = 1'b1;     // Enable tất cả thanh ghi syndrome để nhận dữ liệu đầu tiên 
-                count_en    = 1'b1;     // Bắt đầu enable bộ đếm khi nhận được symbol đầu tiên của message để theo dõi số lượng symbols đã nhận được
-                control     = 1'b0;     // Riêng trong chu kỳ đầu tiên, control vẫn là 0 để chỉ nhận dữ liệu vào mà chưa thực hiện feedback
-                ready       = 1'b0;     // Không sẵn sàng nhận dữ liệu mới khi đang tính toán    
-                error       = 1'b0;
-            end
-
-            CALC2: begin
+            CALC: begin
                 valid_out   = 1'b0;     
                 reg_en      = 1'b1;
                 count_en    = 1'b1;     
@@ -315,30 +306,24 @@ module rs_dec_syn_ctrl (
     always_comb begin
         case (state_current)
             IDLE: begin
-                if (~(sop_in | valid_in))   state_next = IDLE;    // Vẫn ở trạng thái IDLE nếu chưa nhận được SOP hoặc dữ liệu không hợp lệ  
-                else if (sop_in & valid_in) state_next = CALC1;   // Chuyển sang trạng thái CALC1 khi nhận được SOP và dữ liệu hợp lệ
-                else                        state_next = ERROR;   // Nếu sop_in và valid_in không cùng lên cao, chuyển sang trạng thái lỗi ERROR
+                if (~(sop_in | valid_in))   state_next = IDLE;  // Vẫn ở trạng thái IDLE nếu chưa nhận được SOP hoặc dữ liệu không hợp lệ  
+                else if (sop_in & valid_in) state_next = CALC;  // Chuyển sang trạng thái CALC khi nhận được SOP và dữ liệu hợp lệ
+                else                        state_next = ERROR; // Nếu sop_in và valid_in không cùng lên cao, chuyển sang trạng thái lỗi ERROR
             end
 
-            CALC1: begin
-                if (~sop_in & valid_in) state_next = CALC2; // Chuyển sang trạng thái CALC2 khi sop_in xuống thấp nhưng vẫn nhận được dữ liệu hợp lệ (bắt đầu chu kỳ tiếp theo)
-                else                    state_next = ERROR; // Nếu sop_in không xuống thấp hoặc valid_in không hợp lệ, chuyển sang trạng thái lỗi ERROR
-            end
-
-            CALC2: begin
-                if ((~sop_in & valid_in) & ~count_done)     state_next = CALC2; // Tiếp tục ở lại trạng thái CALC2 nếu vẫn còn dữ liệu vào hợp lệ và chưa nhận đủ N symbols (count = 542, bit 9 và các bit [4:1] đều là 1)
+            CALC: begin
+                if ((~sop_in & valid_in) & ~count_done)     state_next = CALC;  // Tiếp tục ở lại trạng thái CALC nếu vẫn còn dữ liệu vào hợp lệ và chưa nhận đủ N symbols (count = 542, bit 9 và các bit [4:1] đều là 1)
                 else if ((~sop_in & valid_in) & count_done) state_next = DONE;  // Khi đã nhận đủ N symbols (count = 542, bit 9 và các bit [4:1] đều là 1) và sop_in đã xuống thấp, chuyển sang trạng thái DONE để hoàn thành gói tin
                 else                                        state_next = ERROR; // Nếu valid_in xuống thấp trước khi nhận đủ N symbols, hoặc sop_in vẫn còn cao sau khi đã nhận đủ N symbols, đều là tín hiệu không hợp lệ và chuyển sang trạng thái lỗi ERROR
             end
 
             DONE: begin
-                if (sop_in & valid_in)          state_next = CALC1; // Nếu nhận được gói tin mới ngay sau khi hoàn thành gói tin trước đó (sop_in và valid_in cùng lên cao) và bộ đếm đã đạt giá trị 545 (bit 9, bit 5 và bit 0 đều là 1), chuyển sang trạng thái CALC1 để bắt đầu tính toán syndrome cho gói tin mới
-                else if (~(sop_in | valid_in))  state_next = IDLE;  // Nếu không nhận được gói tin mới, quay về trạng thái IDLE để chờ SOP tiếp theo
-                else                            state_next = ERROR; // Nếu có tín hiệu không hợp lệ (ví dụ: nhận được gói tin mới khi bộ đếm chưa đạt giá trị 545, hoặc nhận được gói tin mới ngay sau khi hoàn thành gói tin trước đó nhưng bộ đếm chưa đạt giá trị 545), chuyển sang trạng thái lỗi ERROR
+                if (~sop_in & valid_in) state_next = IDLE;  // Nếu không nhận được gói tin mới, quay về trạng thái IDLE để chờ SOP tiếp theo
+                else                    state_next = ERROR; 
             end
 
             ERROR: begin
-                if (sop_in & valid_in)          state_next = CALC1; // Nếu nhận được gói tin mới sau khi đã rơi vào trạng thái lỗi, chuyển sang trạng thái CALC1 để bắt đầu tính toán syndrome cho gói tin mới
+                if (sop_in & valid_in)          state_next = CALC; // Nếu nhận được gói tin mới sau khi đã rơi vào trạng thái lỗi, chuyển sang trạng thái CALC để bắt đầu tính toán syndrome cho gói tin mới
                 else if (~(sop_in | valid_in))  state_next = IDLE;  // Nếu không nhận được gói tin mới, quay về trạng thái IDLE để chờ SOP tiếp theo
                 else                            state_next = ERROR; // Nếu có tín hiệu không hợp lệ, vẫn giữ nguyên trạng thái lỗi ERROR
             end

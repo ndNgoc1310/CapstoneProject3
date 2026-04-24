@@ -42,7 +42,7 @@ module err_inject
     // Đa thức LFSR cực đại: x^16 + x^14 + x^13 + x^11 + 1
     // =========================================================
     logic [15:0] lfsr;
-    wire lfsr_fb = lfsr[1] ^ lfsr[2] ^ lfsr[3] ^ lfsr[4];
+    wire lfsr_fb = lfsr[6] ^ lfsr[7] ^ lfsr[8] ^ lfsr[9];
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin

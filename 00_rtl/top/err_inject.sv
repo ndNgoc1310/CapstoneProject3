@@ -76,9 +76,9 @@ module err_inject
     always_comb begin
         case (mode_sw)
             3'b000: random_inject = 1'b0;
-            3'b001: random_inject = ({lfsr[10], lfsr[8], lfsr[6], lfsr[4], lfsr[2], lfsr[0]} == 6'b0);       // Xác suất 1/64
-            3'b010: random_inject = ({lfsr[11], lfsr[9], lfsr[7], lfsr[5], lfsr[3], lfsr[1]} == 6'b0);  // Xác suất 1/64
-            3'b011: random_inject = ({lfsr[8], lfsr[6], lfsr[4], lfsr[2], lfsr[0]} == 5'b0);                   // Xác suất 1/32
+            3'b001: random_inject = ({lfsr[14], lfsr[12], lfsr[10], lfsr[8], lfsr[6], lfsr[4], lfsr[2], lfsr[0]} == 8'b0);       // Xác suất 1/256
+            3'b010: random_inject = ({lfsr[13], lfsr[11], lfsr[9], lfsr[7], lfsr[5], lfsr[3], lfsr[1]} == 7'b0);      // Xác suất 1/128
+            3'b011: random_inject = ({lfsr[12], lfsr[10], lfsr[8], lfsr[6], lfsr[4], lfsr[2]} == 6'b0);                   // Xác suất 1/64
             3'b100: random_inject = ({lfsr[8], lfsr[6], lfsr[4], lfsr[2], lfsr[0]} == 5'b0);                   // Xác suất 1/32
             3'b101: random_inject = ({lfsr[4], lfsr[2], lfsr[0]} == 3'b0);                                  // Xác suất 1/8  
             default: random_inject = 1'b1;                                                                  // Chèn toàn bộ

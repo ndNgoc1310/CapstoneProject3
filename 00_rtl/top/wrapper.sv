@@ -10,27 +10,58 @@ module msg_pumper
     input  logic clk,
     input  logic rst_n,
     input  logic start_test,
+    input  logic enc_ready,    
     
     output logic enc_sop_in,
     output logic enc_valid_in,
     output logic [9:0] enc_data_in
 );
+    // --- Tạo Tick 10ms để Debounce (Fclk = 50MHz) ---
+    logic [18:0] tick_cnt;
+    logic tick_10ms;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (~rst_n) begin
+            tick_cnt <= 0;
+            tick_10ms <= 0;
+        end else begin
+            if (tick_cnt == 19'd500_000) begin
+                tick_cnt <= 0;
+                tick_10ms <= 1'b1;
+            end else begin
+                tick_cnt <= tick_cnt + 1;
+                tick_10ms <= 1'b0;
+            end
+        end
+    end
+
+    // --- Bắt sườn nút Start (Đã Debounce) ---
+    logic start_debounced, start_d;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (~rst_n) begin
+            start_debounced <= 1'b0;
+            start_d <= 1'b0;
+        end else begin
+            if (tick_10ms) start_debounced <= start_test;
+            start_d <= start_debounced;
+        end
+    end
+    wire start_pulse = start_debounced & ~start_d; // Chỉ tạo 1 xung duy nhất
+
     logic [9:0] msg_cnt;
     typedef enum logic [1:0] {GEN_IDLE, GEN_PUMP} gen_state_t;
     gen_state_t gen_state, gen_next;
 
-    // FSM Transition
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) gen_state <= GEN_IDLE;
         else        gen_state <= gen_next;
     end
 
-    // FSM Next State Logic
     always_comb begin
         case (gen_state)
             GEN_IDLE: begin
-                if (start_test) gen_next = GEN_PUMP;
-                else            gen_next = GEN_IDLE;
+                // Chỉ bơm khi có xung nút bấm VÀ Encoder đang Ready
+                if (start_pulse && enc_ready) gen_next = GEN_PUMP;
+                else                          gen_next = GEN_IDLE;
             end
             GEN_PUMP: begin
                 if (msg_cnt == 10'(K - 1)) gen_next = GEN_IDLE;
@@ -40,7 +71,6 @@ module msg_pumper
         endcase
     end
 
-    // FSM Output & Counter
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
             msg_cnt      <= '0;
@@ -53,19 +83,18 @@ module msg_pumper
                 enc_sop_in   <= 1'b0;
                 enc_valid_in <= 1'b0;
                 enc_data_in  <= '0;
-                if (start_test) begin
+                if (start_pulse && enc_ready) begin
                     enc_valid_in <= 1'b1;
                     enc_sop_in   <= 1'b1;
-                    enc_data_in  <= 10'd0; // Symbol đầu tiên r0 = 0
+                    enc_data_in  <= 10'd0;
                 end
             end 
             else if (gen_state == GEN_PUMP) begin
                 msg_cnt      <= msg_cnt + 10'd1;
                 enc_valid_in <= 1'b1;
                 enc_sop_in   <= 1'b0;
-                enc_data_in  <= msg_cnt + 10'd1; // Dữ liệu tăng dần: 1, 2, 3...
+                enc_data_in  <= msg_cnt + 10'd1;
                 
-                // Ngắt bơm khi đủ K symbols
                 if (msg_cnt == 10'(K - 1)) begin
                     enc_valid_in <= 1'b0;
                     enc_data_in  <= '0;
@@ -86,7 +115,6 @@ module dec_err_track_ram (
     input  logic dec_sop_out,
     input  logic dec_err_flg,
     input  logic [9:0] dec_err_mag,
-    
     input  logic [9:0] read_addr,
     
     output logic [9:0] corrected_count,
@@ -96,9 +124,6 @@ module dec_err_track_ram (
     logic [9:0] dec_symbol_cnt;
     logic [9:0] dec_pos_mem [0:543];
     logic [9:0] dec_mag_mem [0:543];
-    
-    logic [9:0] dec_current_sym;
-    assign dec_current_sym = dec_sop_out ? 10'd0 : dec_symbol_cnt;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
@@ -108,7 +133,8 @@ module dec_err_track_ram (
             if (dec_sop_out) begin
                 dec_symbol_cnt <= 10'd1;
                 if (dec_err_flg) begin
-                    dec_pos_mem[0]  <= 10'd0;
+                    // FIX: LIFO xuất symbol 543 đầu tiên
+                    dec_pos_mem[0]  <= 10'd543; 
                     dec_mag_mem[0]  <= dec_err_mag;
                     corrected_count <= 10'd1;
                 end else begin
@@ -117,7 +143,8 @@ module dec_err_track_ram (
             end else begin
                 dec_symbol_cnt <= dec_symbol_cnt + 10'd1;
                 if (dec_err_flg) begin
-                    dec_pos_mem[corrected_count] <= dec_current_sym;
+                    // FIX: Quy đổi toạ độ ngược của LIFO về toạ độ gốc của gói tin
+                    dec_pos_mem[corrected_count] <= 10'd543 - dec_symbol_cnt;
                     dec_mag_mem[corrected_count] <= dec_err_mag;
                     corrected_count <= corrected_count + 10'd1;
                 end
@@ -125,9 +152,12 @@ module dec_err_track_ram (
         end
     end
 
-    // Cổng đọc cho FSM hiển thị
-    assign read_pos = dec_pos_mem[read_addr];
-    assign read_mag = dec_mag_mem[read_addr];
+    // FIX: Đảo ngược Index đọc mảng để Error đầu tiên vào trùng với Error đầu tiên ra
+    logic [9:0] rev_read_addr;
+    assign rev_read_addr = (corrected_count > 0) ? (corrected_count - 10'd1 - read_addr) : 10'd0;
+
+    assign read_pos = dec_pos_mem[rev_read_addr];
+    assign read_mag = dec_mag_mem[rev_read_addr];
 
 endmodule:dec_err_track_ram
 
@@ -145,29 +175,57 @@ module disp_key_ctrl (
     
     output logic [9:0] disp_idx
 );
-    // Mạch chống dội (Debounce/Edge Detection)
-    logic key2_d1, key2_d2;
-    logic key3_d1, key3_d2;
-
+    // --- Tạo Tick 10ms ---
+    logic [18:0] tick_cnt;
+    logic tick_10ms;
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
-            key2_d1 <= 1'b1; key2_d2 <= 1'b1; 
-            key3_d1 <= 1'b1; key3_d2 <= 1'b1;
+            tick_cnt <= 0;
+            tick_10ms <= 0;
         end else begin
-            key2_d1 <= key_next; key2_d2 <= key2_d1;
-            key3_d1 <= key_prev; key3_d2 <= key3_d1;
+            if (tick_cnt == 19'd500_000) begin
+                tick_cnt <= 0;
+                tick_10ms <= 1'b1;
+            end else begin
+                tick_cnt <= tick_cnt + 1;
+                tick_10ms <= 1'b0;
+            end
         end
     end
 
-    wire next_pressed = ~key2_d1 & key2_d2;
-    wire prev_pressed = ~key3_d1 & key3_d2;
+    // --- Lấy mẫu nút bấm sau mỗi 10ms để triệt nhiễu cơ học ---
+    logic key_next_debounced, key_prev_debounced;
+    logic key_next_d, key_prev_d;
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (~rst_n) begin
+            key_next_debounced <= 1'b1;
+            key_prev_debounced <= 1'b1;
+        end else if (tick_10ms) begin
+            key_next_debounced <= key_next;
+            key_prev_debounced <= key_prev;
+        end
+    end
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (~rst_n) begin
+            key_next_d <= 1'b1;
+            key_prev_d <= 1'b1;
+        end else begin
+            key_next_d <= key_next_debounced;
+            key_prev_d <= key_prev_debounced;
+        end
+    end
+
+    // Tạo xung 1 nhịp clock duy nhất khi phát hiện sườn xuống (Bấm nút)
+    wire next_pressed = ~key_next_debounced & key_next_d;
+    wire prev_pressed = ~key_prev_debounced & key_prev_d;
 
     // Logic điều hướng (Navigation)
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
             disp_idx <= 10'd0;
         end else begin
-            // Chỉ cho cuộn nếu không ở Mode Count và có lỗi được chèn
             if (disp_mode != 2'b00 && injected_count > 0) begin
                 if (next_pressed) begin
                     if (disp_idx < injected_count - 10'd1) disp_idx <= disp_idx + 10'd1;
@@ -178,7 +236,6 @@ module disp_key_ctrl (
                     else disp_idx <= injected_count - 10'd1;
                 end
             end else begin
-                // Trả về 0 nếu ở Mode Số lượng (Mode 0)
                 disp_idx <= 10'd0;
             end
         end
@@ -288,6 +345,7 @@ module wrapper
         .clk          (clk),
         .rst_n        (rst_n),
         .start_test   (start_test),
+        .enc_ready    (enc_ready),
         .enc_sop_in   (enc_sop_in),
         .enc_valid_in (enc_valid_in),
         .enc_data_in  (enc_data_in)

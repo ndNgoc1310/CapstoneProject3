@@ -16,7 +16,11 @@ module rs_dec
     output logic valid_out,
     output logic [WIDTH-1:0] data_out,
     output logic ready,
-    output logic error
+    output logic error,
+
+    // --- Error Monitoring Interface ---
+    output logic err_flg_out,               // Nối từ Chien Search
+    output logic [WIDTH-1:0] err_mag_out    // Nối từ Forney
 );
 
     // Internal signals
@@ -43,6 +47,7 @@ module rs_dec
 
     logic [WIDTH-1:0] err_mag_delay;
     logic sop_out_delay;
+    logic err_flg_delay;
 
     // --- 1. Submodules
 
@@ -112,7 +117,7 @@ module rs_dec
         .data_out   (lifo_data_out)
     );
 
-    // --- 2.
+    // --- 2. Delay
     flop_r_nb #(.WIDTH(WIDTH)) Err_Mag_Delay_Reg (
         .clk    (clk),
         .rst_n  (rst_n),
@@ -120,28 +125,40 @@ module rs_dec
         .d      (forney_err_mag),
         .q      (err_mag_delay)
     );
+    
+    flop_r_nb #(.WIDTH(1)) Sop_Delay_Reg (
+        .clk    (clk),
+        .rst_n  (rst_n),
+        .en     (chien_valid_out),
+        .d      (chien_sop_out),
+        .q      (sop_out_delay)
+    );
 
+    flop_r_nb #(.WIDTH(1)) Err_Flg_Delay_Reg (
+        .clk    (clk),
+        .rst_n  (rst_n),
+        .en     (chien_valid_out), 
+        .d      (chien_to_forney_err_flg),
+        .q      (err_flg_delay)
+    );
+
+    // --- 3. Error Correction
     xor_nb #(.WIDTH(WIDTH)) Err_Cor (
         .a  (lifo_data_out),
         .b  (err_mag_delay),
         .y  (data_out)
     );
 
-    // --- 3.
+    // --- 4.
     assign valid_out = lifo_valid_out;
-    
-    flop_r_nb #(.WIDTH(1)) Sop_Delay_Reg (
-        .clk    (clk),
-        .rst_n  (rst_n),
-        .en     (1'b1),
-        .d      (chien_sop_out),
-        .q      (sop_out)
-    );
-
+    assign sop_out = sop_out_delay;
     assign ready = syn_ready & kes_ready & chien_ready;
     assign error = syn_error | kes_error | chien_error;
 
-
+    // --- Error Monitoring Interface ---
+    assign err_flg_out = err_flg_delay;
+    assign err_mag_out = err_mag_delay;
+    
 endmodule:rs_dec
 
 

@@ -59,8 +59,8 @@ module led_7s_enc_dec_2d (
 	logic [3:0] tens, units;
 
 	always_comb begin
-		tens = dec_in / 10'd10;
-		units = dec_in % 10'd10;
+		tens = (4)'(dec_in / 10'd10);
+		units = (4)'(dec_in % 10'd10);
 	end
 
 	led_7s_enc_dec_1d Enc_0 (
@@ -83,9 +83,9 @@ module led_7s_enc_dec_3d (
 	logic [3:0] hundreds, tens, units;
 
 	always_comb begin
-		hundreds = dec_in / 10'd100;
-		tens = (dec_in % 10'd100) / 10'd10;
-		units = dec_in % 10'd10;
+		hundreds = (4)'(dec_in / 10'd100);
+		tens = (4)'((dec_in % 10'd100) / 10'd10);
+		units = (4)'(dec_in % 10'd10);
 	end
 
 	led_7s_enc_dec_1d Enc_0 (

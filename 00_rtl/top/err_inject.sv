@@ -76,11 +76,11 @@ module err_inject
     always_comb begin
         case (mode_sw)
             3'b000: random_inject = 1'b0;
-            3'b001: random_inject = (lfsr[6:0] == 7'b0); // Xác suất 1/128 (~ 4 lỗi rải rác)
+            3'b001: random_inject = ({lfsr[4], lfsr[2], lfsr[5], lfsr[6], lfsr[1], lfsr[0]} == 6'b0); // Xác suất 1/128 (~ 4 lỗi rải rác)
             3'b010: random_inject = (lfsr[7:0] == 8'b0); // Xác suất 1/256
-            3'b011: random_inject = (lfsr[5:0] == 6'b0); // Xác suất 1/64  (~ 8.5 lỗi rải rác)
-            3'b100: random_inject = (lfsr[5:0] == 6'b0); // Xác suất 1/64
-            3'b101: random_inject = (lfsr[2:0] == 3'b0); // Xác suất 1/8   (~ 68 lỗi rải rác)
+            3'b011: random_inject = ({lfsr[2], lfsr[5], lfsr[6], lfsr[1], lfsr[0]} == 5'b0); // Xác suất 1/64  (~ 8.5 lỗi rải rác)
+            3'b100: random_inject = ({lfsr[2], lfsr[5], lfsr[6], lfsr[1], lfsr[0]} == 5'b0); // Xác suất 1/64
+            3'b101: random_inject = ({lfsr[6], lfsr[1], lfsr[0]} == 3'b0); // Xác suất 1/8   (~ 68 lỗi rải rác)
             default: random_inject = 1'b1;               // Chèn toàn bộ
         endcase
     end
@@ -95,7 +95,7 @@ module err_inject
     logic is_burst_mode;
     logic burst_active;
     
-    assign is_burst_mode = (mode_sw == 3'b001);
+    assign is_burst_mode = (mode_sw == 3'b010);
 
     // Nếu đang ở Mode Burst VÀ đã chèn ít nhất 1 lỗi (tức là đã tìm được điểm Start) 
     // VÀ chưa đạt đủ target 15 lỗi -> Bắt buộc chèn liên tiếp ở các nhịp tiếp theo!

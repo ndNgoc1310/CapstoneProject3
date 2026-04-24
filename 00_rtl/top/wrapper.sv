@@ -10,15 +10,15 @@ module msg_pumper
     input  logic clk,
     input  logic rst_n,
     input  logic start_test,
-    input  logic enc_ready,    
+    input  logic enc_rdy,    
     
-    output logic enc_sop_in,
-    output logic enc_valid_in,
-    output logic [9:0] enc_data_in
+    output logic    enc_sop_in,
+    output logic        enc_vld_in,
+    output logic [9:0]  enc_dat_in
 );
     // --- Tạo Tick 10ms để Debounce (Fclk = 50MHz) ---
-    logic [18:0] tick_cnt;
-    logic tick_10ms;
+    logic [18:0]    tick_cnt;
+    logic           tick_10ms;
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
             tick_cnt <= 0;
@@ -60,8 +60,8 @@ module msg_pumper
         case (gen_state)
             GEN_IDLE: begin
                 // Chỉ bơm khi có xung nút bấm VÀ Encoder đang Ready
-                if (start_pulse && enc_ready) gen_next = GEN_PUMP;
-                else                          gen_next = GEN_IDLE;
+                if (start_pulse && enc_rdy) gen_next = GEN_PUMP;
+                else                        gen_next = GEN_IDLE;
             end
             GEN_PUMP: begin
                 if (msg_cnt == 10'(K - 1)) gen_next = GEN_IDLE;
@@ -73,53 +73,53 @@ module msg_pumper
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
-            msg_cnt      <= '0;
-            enc_sop_in   <= 1'b0;
-            enc_valid_in <= 1'b0;
-            enc_data_in  <= '0;
+            msg_cnt     <= '0;
+            enc_sop_in  <= 1'b0;
+            enc_vld_in  <= 1'b0;
+            enc_dat_in  <= '0;
         end else begin
             if (gen_state == GEN_IDLE) begin
-                msg_cnt      <= '0;
-                enc_sop_in   <= 1'b0;
-                enc_valid_in <= 1'b0;
-                enc_data_in  <= '0;
-                if (start_pulse && enc_ready) begin
-                    enc_valid_in <= 1'b1;
-                    enc_sop_in   <= 1'b1;
-                    enc_data_in  <= 10'd0;
+                msg_cnt     <= '0;
+                enc_sop_in  <= 1'b0;
+                enc_vld_in  <= 1'b0;
+                enc_dat_in  <= '0;
+                if (start_pulse && enc_rdy) begin
+                    enc_vld_in  <= 1'b1;
+                    enc_sop_in  <= 1'b1;
+                    enc_dat_in  <= 10'd0;
                 end
             end 
             else if (gen_state == GEN_PUMP) begin
-                msg_cnt      <= msg_cnt + 10'd1;
-                enc_valid_in <= 1'b1;
-                enc_sop_in   <= 1'b0;
-                enc_data_in  <= msg_cnt + 10'd1;
+                msg_cnt     <= msg_cnt + 10'd1;
+                enc_vld_in  <= 1'b1;
+                enc_sop_in  <= 1'b0;
+                enc_dat_in  <= msg_cnt + 10'd1;
                 
                 if (msg_cnt == 10'(K - 1)) begin
-                    enc_valid_in <= 1'b0;
-                    enc_data_in  <= '0;
+                    enc_vld_in  <= 1'b0;
+                    enc_dat_in  <= '0;
                 end
             end
         end
     end
-endmodule:msg_pumper
+endmodule: msg_pumper
 
 // =========================================================
 // Module 2: DECODER ERROR TRACKING RAM
 // Lưu trữ lịch sử các lỗi đã sửa được từ khối Decoder
 // =========================================================
 module dec_err_track_ram (
-    input  logic clk,
-    input  logic rst_n,
-    input  logic dec_valid_out,
-    input  logic dec_sop_out,
-    input  logic dec_err_flg,
-    input  logic [9:0] dec_err_mag,
-    input  logic [9:0] read_addr,
+    input  logic        clk,
+    input  logic        rst_n,
+    input  logic        dec_vld_out,
+    input  logic        dec_sop_out,
+    input  logic        dec_err_flg,
+    input  logic [9:0]  dec_err_mag,
+    input  logic [9:0]  read_addr,
     
-    output logic [9:0] corrected_count,
-    output logic [9:0] read_pos,
-    output logic [9:0] read_mag
+    output logic [9:0]  corrected_count,
+    output logic [9:0]  read_pos,
+    output logic [9:0]  read_mag
 );
     logic [9:0] dec_symbol_cnt;
     logic [9:0] dec_pos_mem [0:543];
@@ -129,7 +129,7 @@ module dec_err_track_ram (
         if (~rst_n) begin
             dec_symbol_cnt  <= '0;
             corrected_count <= '0;
-        end else if (dec_valid_out) begin 
+        end else if (dec_vld_out) begin 
             if (dec_sop_out) begin
                 dec_symbol_cnt <= 10'd1;
                 if (dec_err_flg) begin
@@ -144,9 +144,9 @@ module dec_err_track_ram (
                 dec_symbol_cnt <= dec_symbol_cnt + 10'd1;
                 if (dec_err_flg) begin
                     // FIX: Quy đổi toạ độ ngược của LIFO về toạ độ gốc của gói tin
-                    dec_pos_mem[corrected_count] <= 10'd543 - dec_symbol_cnt;
-                    dec_mag_mem[corrected_count] <= dec_err_mag;
-                    corrected_count <= corrected_count + 10'd1;
+                    dec_pos_mem[corrected_count]    <= 10'd543 - dec_symbol_cnt;
+                    dec_mag_mem[corrected_count]    <= dec_err_mag;
+                    corrected_count                 <= corrected_count + 10'd1;
                 end
             end
         end
@@ -159,21 +159,21 @@ module dec_err_track_ram (
     assign read_pos = dec_pos_mem[rev_read_addr];
     assign read_mag = dec_mag_mem[rev_read_addr];
 
-endmodule:dec_err_track_ram
+endmodule: dec_err_track_ram
 
 // =========================================================
 // Module 3: HIỂN THỊ & ĐIỀU KHIỂN KEY (Tiến/Lùi Index)
 // Xử lý nút bấm, chống dội và điều hướng con trỏ Index RAM
 // =========================================================
 module disp_key_ctrl (
-    input  logic clk,
-    input  logic rst_n,
-    input  logic [1:0] disp_mode,
-    input  logic [9:0] injected_count,
-    input  logic key_next,
-    input  logic key_prev,
+    input  logic        clk,
+    input  logic        rst_n,
+    input  logic [1:0]  disp_mode,
+    input  logic [9:0]  injected_count,
+    input  logic        key_next,
+    input  logic        key_prev,
     
-    output logic [9:0] disp_idx
+    output logic [9:0]  disp_idx
 );
     // --- Tạo Tick 10ms ---
     logic [18:0] tick_cnt;
@@ -184,11 +184,11 @@ module disp_key_ctrl (
             tick_10ms <= 0;
         end else begin
             if (tick_cnt == 19'd500_000) begin
-                tick_cnt <= 0;
-                tick_10ms <= 1'b1;
+                tick_cnt    <= 0;
+                tick_10ms   <= 1'b1;
             end else begin
-                tick_cnt <= tick_cnt + 1;
-                tick_10ms <= 1'b0;
+                tick_cnt    <= tick_cnt + 1;
+                tick_10ms   <= 1'b0;
             end
         end
     end
@@ -240,7 +240,7 @@ module disp_key_ctrl (
             end
         end
     end
-endmodule:disp_key_ctrl
+endmodule: disp_key_ctrl
 
 // =========================================================
 // Module 4: HEX MULTIPLEXING (3 Chữ số)
@@ -295,7 +295,7 @@ module hex_mux (
         .enc_out_1 (hex1),
         .enc_out_2 (hex2)
     );
-endmodule:hex_mux
+endmodule: hex_mux
 
 // =========================================================
 // Module Chính: WRAPPER
@@ -318,16 +318,16 @@ module wrapper
     assign start_test = ~KEY[1]; 
     
     // --- 2. Tín hiệu kết nối nội bộ ---
-    logic enc_sop_in, enc_valid_in;
-    logic [9:0] enc_data_in;
-    logic enc_sop_out, enc_valid_out, enc_ready, enc_error;
-    logic [9:0] enc_data_out;
+    logic       enc_sop_in, enc_vld_in;
+    logic [9:0] enc_dat_in;
+    logic       enc_sop_out, enc_vld_out, enc_rdy, enc_err;
+    logic [9:0] enc_dat_out;
     
-    logic dec_sop_in, dec_valid_in;
-    logic [9:0] dec_data_in;
-    logic dec_sop_out, dec_valid_out, dec_ready, dec_error, dec_err_flg;
+    logic       dec_sop_in, dec_vld_in;
+    logic [9:0] dec_dat_in;
+    logic       dec_sop_out, dec_vld_out, dec_rdy, dec_err, dec_err_flg;
     logic [9:0] dec_err_mag;
-    logic [9:0] dec_data_out;
+    logic [9:0] dec_dat_out;
     
     logic [9:0] injected_count;
     logic [9:0] corrected_count;
@@ -342,37 +342,37 @@ module wrapper
 
     // 3.1. Hardware Data Generator
     msg_pumper #(.K(514)) PUMPER (
-        .clk          (clk),
-        .rst_n        (rst_n),
-        .start_test   (start_test),
-        .enc_ready    (enc_ready),
-        .enc_sop_in   (enc_sop_in),
-        .enc_valid_in (enc_valid_in),
-        .enc_data_in  (enc_data_in)
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .start_test (start_test),
+        .enc_rdy    (enc_rdy),
+        .enc_sop_in (enc_sop_in),
+        .enc_vld_in (enc_vld_in),
+        .enc_dat_in (enc_dat_in)
     );
 
     // 3.2. Top-Level Codec (RS_ENC + RS_DEC)
     top #(.WIDTH(10), .NSYM(30), .ORDER(15), .K(544)) RS_CODEC_TOP (
-        .clk             (clk),
-        .rst_n           (rst_n),
-        .enc_sop_in      (enc_sop_in),
-        .enc_valid_in    (enc_valid_in),
-        .enc_data_in     (enc_data_in),
-        .enc_sop_out     (enc_sop_out),
-        .enc_valid_out   (enc_valid_out),
-        .enc_data_out    (enc_data_out),
-        .enc_ready       (enc_ready),
-        .enc_error       (enc_error),
-        .dec_sop_in      (dec_sop_in),
-        .dec_valid_in    (dec_valid_in),
-        .dec_data_in     (dec_data_in),
-        .dec_sop_out     (dec_sop_out),
-        .dec_valid_out   (dec_valid_out),
-        .dec_data_out    (dec_data_out),
-        .dec_ready       (dec_ready),
-        .dec_error       (dec_error),
-        .dec_err_flg_out (dec_err_flg),
-        .dec_err_mag_out (dec_err_mag)
+        .clk                (clk),
+        .rst_n              (rst_n),
+        .enc_sop_in         (enc_sop_in),
+        .enc_vld_in         (enc_vld_in),
+        .enc_dat_in         (enc_dat_in),
+        .enc_sop_out        (enc_sop_out),
+        .enc_vld_out        (enc_vld_out),
+        .enc_dat_out        (enc_dat_out),
+        .enc_rdy            (enc_rdy),
+        .enc_err            (enc_err),
+        .dec_sop_in         (dec_sop_in),
+        .dec_vld_in         (dec_vld_in),
+        .dec_dat_in         (dec_dat_in),
+        .dec_sop_out        (dec_sop_out),
+        .dec_vld_out        (dec_vld_out),
+        .dec_dat_out        (dec_dat_out),
+        .dec_rdy            (dec_rdy),
+        .dec_err            (dec_err),
+        .dec_err_flg_out    (dec_err_flg),
+        .dec_err_mag_out    (dec_err_mag)
     );
 
     // 3.3. Error Injector (Khối chèn lỗi)
@@ -381,11 +381,11 @@ module wrapper
         .rst_n          (rst_n),
         .mode_sw        (SW[2:0]), 
         .sop_in         (enc_sop_out),
-        .valid_in       (enc_valid_out),
-        .data_in        (enc_data_out),
+        .vld_in         (enc_vld_out),
+        .dat_in         (enc_dat_out),
         .sop_out        (dec_sop_in),
-        .valid_out      (dec_valid_in),
-        .data_out       (dec_data_in),
+        .vld_out        (dec_vld_in),
+        .dat_out        (dec_dat_in),
         .injected_count (injected_count),
         .read_addr      (disp_idx),
         .read_inj_pos   (read_inj_pos),
@@ -394,16 +394,16 @@ module wrapper
 
     // 3.4. Decoder Error Tracking RAM (Lưu lịch sử sửa lỗi)
     dec_err_track_ram DEC_RAM (
-        .clk             (clk),
-        .rst_n           (rst_n),
-        .dec_valid_out   (dec_valid_out),
-        .dec_sop_out     (dec_sop_out),
-        .dec_err_flg     (dec_err_flg),
-        .dec_err_mag     (dec_err_mag),
-        .read_addr       (disp_idx),
-        .corrected_count (corrected_count),
-        .read_pos        (read_dec_pos),
-        .read_mag        (read_dec_mag)
+        .clk                (clk),
+        .rst_n              (rst_n),
+        .dec_vld_out        (dec_vld_out),
+        .dec_sop_out        (dec_sop_out),
+        .dec_err_flg        (dec_err_flg),
+        .dec_err_mag        (dec_err_mag),
+        .read_addr          (disp_idx),
+        .corrected_count    (corrected_count),
+        .read_pos           (read_dec_pos),
+        .read_mag           (read_dec_mag)
     );
 
     // 3.5. Hiển thị & Điều khiển KEY
@@ -440,9 +440,9 @@ module wrapper
     // Thừa ra LED [7:4] 
     assign LEDR[7:4] = 'b0;
     
-    assign LEDR[3]   = dec_error; // Cờ Uncorrectable Error
-    assign LEDR[2]   = dec_valid_out & ~dec_error & (injected_count == corrected_count); // Cờ PASS
-    assign LEDR[1]   = dec_ready; // Decoder sẵn sàng
-    assign LEDR[0]   = enc_ready; // Encoder sẵn sàng
+    assign LEDR[3] = dec_err; // Cờ Uncorrectable Error
+    assign LEDR[2] = dec_vld_out & ~dec_err & (injected_count == corrected_count); // Cờ PASS
+    assign LEDR[1] = dec_rdy; // Decoder sẵn sàng
+    assign LEDR[0] = enc_rdy; // Encoder sẵn sàng
 
-endmodule:wrapper
+endmodule: wrapper

@@ -3,11 +3,11 @@ module rs_dec_forney
     parameter WIDTH = 10
 )
 (
-    input logic err_flg,
+    input logic             err_flg,
     input logic [WIDTH-1:0] l_val_der,
     input logic [WIDTH-1:0] o_val,
 
-    output logic [WIDTH-1:0] err_mag
+    output logic [WIDTH-1:0]    err_mag
 );
 
     // Internal signals
@@ -31,4 +31,4 @@ module rs_dec_forney
         .y  (err_mag)
     );
 
-endmodule:rs_dec_forney
+endmodule: rs_dec_forney

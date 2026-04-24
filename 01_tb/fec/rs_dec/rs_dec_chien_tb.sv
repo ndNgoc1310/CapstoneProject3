@@ -20,7 +20,7 @@ module rs_dec_chien_tb;
 
     // DUT Inputs
     // Lưu ý: Dùng 2D Packed Array để tương thích 100% với Xcelium
-    logic valid_in;
+    logic vld_in;
     logic [WIDTH-1:0] lam_in [ORDER:0];
     logic [WIDTH-1:0] ome_in [ORDER:0];
 
@@ -29,9 +29,9 @@ module rs_dec_chien_tb;
     logic [WIDTH-1:0] l_val_der;
     logic [WIDTH-1:0] o_val;
     logic sop_out;
-    logic valid_out;
-    logic ready;
-    logic error;
+    logic vld_out;
+    logic sys_rdy;
+    logic sys_err;
 
     // File descriptors & Verification variables
     int in_fd, exp_fd, log_fd;
@@ -42,7 +42,7 @@ module rs_dec_chien_tb;
     int mismatch;       // Cờ đánh dấu fail trong 1 testcase
     
     // Expected Output Array (Cycle-by-cycle)
-    logic [20:0] exp_data_array [0:CYCLES-1];
+    logic [20:0] exp_dat_array [0:CYCLES-1];
     
     // Variables for extracting expected fields
     logic       exp_err_flg;
@@ -59,16 +59,16 @@ module rs_dec_chien_tb;
     ) DUT (
         .clk        (clk),
         .rst_n      (rst_n),
-        .valid_in   (valid_in),
+        .vld_in   (vld_in),
         .lam_in     (lam_in),
         .ome_in     (ome_in),
         .err_flg    (err_flg),
         .l_val_der  (l_val_der),
         .o_val      (o_val),
         .sop_out    (sop_out),
-        .valid_out  (valid_out),
-        .ready      (ready),
-        .error      (error)
+        .vld_out  (vld_out),
+        .sys_rdy      (sys_rdy),
+        .sys_err      (sys_err)
     );
 
     // ---------------------------------------------------------
@@ -108,7 +108,7 @@ module rs_dec_chien_tb;
     // ---------------------------------------------------------
     initial begin
         // Init signals
-        valid_in = 1'b0;
+        vld_in = 1'b0;
         for (int i = 0; i < ORDER+1; i++) lam_in[i] = '0;
         for (int i = 0; i < ORDER+1; i++) ome_in[i] = '0;
 
@@ -144,7 +144,7 @@ module rs_dec_chien_tb;
             // --- B. Read Expected Outputs (544 values per line) ---
             for (int i = 0; i < CYCLES; i++) begin
                 if ($fscanf(exp_fd, "%x", tmp_val) != 1) break;
-                exp_data_array[i] = tmp_val;
+                exp_dat_array[i] = tmp_val;
             end
 
             // Safe break if EOF reached abruptly
@@ -154,35 +154,35 @@ module rs_dec_chien_tb;
             mismatch = 0;
 
             // --- C. FSM Protocol (Driving) ---
-            wait(ready == 1'b1);
+            wait(sys_rdy == 1'b1);
             @(posedge clk); 
 
-            // Pulse valid_in for exactly 1 cycle
-            valid_in <= 1'b1;
+            // Pulse vld_in for exactly 1 cycle
+            vld_in <= 1'b1;
             @(posedge clk);
-            valid_in <= 1'b0;
+            vld_in <= 1'b0;
 
             // --- D. FSM Protocol (Catching & Checking) ---
-            wait(valid_out == 1'b1 || error == 1'b1);
+            wait(vld_out == 1'b1 || sys_err == 1'b1);
 
-            if (error == 1'b1) begin
+            if (sys_err == 1'b1) begin
                 $display("[%0t] Testcase %0d: FAIL (FSM Error asserted)", $time, test_idx);
                 $fdisplay(log_fd, "[%0t] Testcase %0d: FAIL (FSM Error asserted)", $time, test_idx);
                 fail_cnt++;
-                wait(ready == 1'b1);
+                wait(sys_rdy == 1'b1);
                 continue; 
             end
 
-            // Đã nhận valid_out == 1, dịch nhẹ 1ns để đọc tín hiệu ổn định sau sườn Clock
+            // Đã nhận vld_out == 1, dịch nhẹ 1ns để đọc tín hiệu ổn định sau sườn Clock
             #1; 
 
             // Vòng lặp kiểm tra 544 nhịp Clock
             for (int c = 0; c < CYCLES; c++) begin
                 
                 // Giải mã Expected Values từ mảng 21-bit
-                exp_err_flg   = exp_data_array[c][20];
-                exp_l_val_der = exp_data_array[c][19:10];
-                exp_o_val     = exp_data_array[c][9:0];
+                exp_err_flg   = exp_dat_array[c][20];
+                exp_l_val_der = exp_dat_array[c][19:10];
+                exp_o_val     = exp_dat_array[c][9:0];
 
                 // So sánh
                 if (err_flg !== exp_err_flg || l_val_der !== exp_l_val_der || o_val !== exp_o_val) begin
@@ -223,8 +223,8 @@ module rs_dec_chien_tb;
                 $fdisplay(log_fd, "[%0t] Testcase %0d: PASS", $time, test_idx);
             end
 
-            // Chờ mạch nhả valid_out và quay về IDLE/READY trước khi test case tiếp theo
-            wait(valid_out == 1'b0);
+            // Chờ mạch nhả vld_out và quay về IDLE/READY trước khi test case tiếp theo
+            wait(vld_out == 1'b0);
             @(posedge clk); 
         end
 
@@ -253,4 +253,4 @@ module rs_dec_chien_tb;
         $finish;
     end
 
-endmodule:rs_dec_chien_tb
+endmodule: rs_dec_chien_tb

@@ -9,7 +9,7 @@ module add_1b
 assign sum = a ^ b ^ cin;
 assign cout = (a & b) | (cin & (a ^ b));
 
-endmodule:add_1b
+endmodule: add_1b
 
 // --------------------
 
@@ -49,7 +49,7 @@ genvar i;
 
 xor (cout, carry[WIDTH-1], cin);
 
-endmodule:add_sub_nb
+endmodule: add_sub_nb
 
 // --------------------
 
@@ -63,7 +63,7 @@ module and_nb
 
 assign y = a & b;
 
-endmodule:and_nb
+endmodule: and_nb
 
 // --------------------
 
@@ -77,7 +77,7 @@ module xor_nb
 
 assign y = a ^ b;
 
-endmodule:xor_nb
+endmodule: xor_nb
 
 // --------------------
 
@@ -91,7 +91,7 @@ module mux_2_nb
 
 assign y = s ? d1 : d0;
 
-endmodule:mux_2_nb
+endmodule: mux_2_nb
 
 // --------------------
 
@@ -108,7 +108,7 @@ always_ff @(posedge clk, negedge rst_n)
     if      (~rst_n)    q <= 0;
     else if (en)        q <= d;
 
-endmodule:flop_r_nb
+endmodule: flop_r_nb
 
 // --------------------
 
@@ -149,4 +149,4 @@ module xor_tree_nb
     // 3. Output cuối cùng luôn nằm ở đỉnh cây (root node)
     assign out = nodes[2*N - 2];
 
-endmodule:xor_tree_nb
+endmodule: xor_tree_nb

@@ -4,16 +4,16 @@ module rs_dec_lifo
     parameter K = 544
 )
 (
-    input logic clk,
-    input logic rst_n,
-    input logic push_sop,
-    input logic push_en,
-    input logic [WIDTH-1:0] data_in,
-    input logic pop_sop,
-    input logic pop_en,
+    input logic             clk,
+    input logic             rst_n,
+    input logic             push_sop,
+    input logic             push_en,
+    input logic [WIDTH-1:0] dat_in,
+    input logic             pop_sop,
+    input logic             pop_en,
 
-    output logic valid_out,
-    output logic [WIDTH-1:0] data_out
+    output logic                vld_out,
+    output logic [WIDTH-1:0]    dat_out
 );
 
     // Internal signals
@@ -40,11 +40,11 @@ module rs_dec_lifo
     // --- 2.
     always_ff @(posedge clk) begin
         if (push_en) begin
-            ram[wr_addr] <= data_in;
+            ram[wr_addr] <= dat_in;
         end
         
         if (pop_en) begin
-            data_out <= ram[rd_addr];
+            dat_out <= ram[rd_addr];
         end
     end
 
@@ -87,7 +87,7 @@ module rs_dec_lifo
         .rst_n  (rst_n),
         .en     (1'b1),
         .d      (pop_en),
-        .q      (valid_out)
+        .q      (vld_out)
     );
 
-endmodule:rs_dec_lifo
+endmodule: rs_dec_lifo

@@ -8,28 +8,28 @@ module rs_dec_kes
     parameter CNT_WIDTH = 5
 )
 (
-    input logic clk,
-    input logic rst_n,
-    input logic valid_in,
+    input logic             clk,
+    input logic             rst_n,
+    input logic             vld_in,
     input logic [WIDTH-1:0] syn_in [NSYM-1:0],
 
-    output logic valid_out,
-    output logic ready,
-    output logic error,
-    output logic [WIDTH-1:0] lam_out [ORDER:0],
-    output logic [WIDTH-1:0] ome_out [ORDER:0]
+    output logic                vld_out,
+    output logic                sys_rdy,
+    output logic                sys_err,
+    output logic [WIDTH-1:0]    lam_out [ORDER:0],
+    output logic [WIDTH-1:0]    ome_out [ORDER:0]
 );
 
     // Internal signals
-    logic [WIDTH-1:0] syn_wdw [ORDER:0];
-    logic [WIDTH-1:0] dis_out;
-    logic [WIDTH-1:0] gam_out;
-    logic delta;
-    logic cnt_end;
-    logic init;
-    logic reg_en;
-    logic cnt_en;
-    logic len_en;
+    logic [WIDTH-1:0]   syn_wdw [ORDER:0];
+    logic [WIDTH-1:0]   dis_out;
+    logic [WIDTH-1:0]   gam_out;
+    logic               delta;
+    logic               cnt_end;
+    logic               init;
+    logic               reg_en;
+    logic               cnt_en;
+    logic               len_en;
 
     // --- Submodule Instantiations ---
     rs_dec_kes_lam #(.WIDTH(WIDTH), .ORDER(ORDER)) Lam_Dpath (
@@ -99,19 +99,19 @@ module rs_dec_kes
     rs_dec_kes_ctrl Ctrl_Unit (
         .clk        (clk),
         .rst_n      (rst_n),
-        .valid_in   (valid_in),
+        .vld_in     (vld_in),
         .cnt_end    (cnt_end),
 
         .init       (init),
         .reg_en     (reg_en),
         .len_en     (len_en),
         .cnt_en     (cnt_en),
-        .valid_out  (valid_out),
-        .ready      (ready),
-        .error      (error)
+        .vld_out    (vld_out),
+        .sys_rdy    (sys_rdy),
+        .sys_err    (sys_err)
     );
 
-endmodule:rs_dec_kes
+endmodule: rs_dec_kes
 
 // ------------------------------------------
 
@@ -121,15 +121,15 @@ module rs_dec_kes_lam
     parameter ORDER = 15
 )
 (
-    input logic clk,
-    input logic rst_n,
-    input logic delta,
-    input logic init,
-    input logic reg_en,
+    input logic             clk,
+    input logic             rst_n,
+    input logic             delta,
+    input logic             init,
+    input logic             reg_en,
     input logic [WIDTH-1:0] dis_out,
     input logic [WIDTH-1:0] gam_out,
 
-    output logic [WIDTH-1:0] lam_out [ORDER:0]
+    output logic [WIDTH-1:0]    lam_out [ORDER:0]
 );
 
     // --- Internal Signals ---
@@ -157,7 +157,7 @@ module rs_dec_kes_lam
         end
     endgenerate
 
-endmodule:rs_dec_kes_lam
+endmodule: rs_dec_kes_lam
 
 // ------------------------------------------
 
@@ -168,16 +168,16 @@ module rs_dec_kes_ome
     parameter ORDER = 15
 )
 (
-    input logic clk,
-    input logic rst_n,
-    input logic delta,
-    input logic init,
-    input logic reg_en,
+    input logic             clk,
+    input logic             rst_n,
+    input logic             delta,
+    input logic             init,
+    input logic             reg_en,
     input logic [WIDTH-1:0] dis_out,
     input logic [WIDTH-1:0] gam_out,
     input logic [WIDTH-1:0] syn_in [NSYM-1:0],
 
-    output logic [WIDTH-1:0] ome_out [ORDER:0]
+    output logic [WIDTH-1:0]    ome_out [ORDER:0]
 );
 
     // --- Internal Signals ---
@@ -206,7 +206,7 @@ module rs_dec_kes_ome
         end
     endgenerate
 
-endmodule:rs_dec_kes_ome
+endmodule: rs_dec_kes_ome
 
 // ------------------------------------------
 
@@ -215,13 +215,13 @@ module rs_dec_kes_gam
     parameter WIDTH = 10
 )
 (
-    input logic clk,
-    input logic rst_n,
-    input logic delta,
-    input logic init,
+    input logic             clk,
+    input logic             rst_n,
+    input logic             delta,
+    input logic             init,
     input logic [WIDTH-1:0] dis_out,
 
-    output logic [WIDTH-1:0] gam_out
+    output logic [WIDTH-1:0]    gam_out
 );
 
     // --- Internal Signals ---
@@ -242,7 +242,7 @@ module rs_dec_kes_gam
         .q      (gam_out)
     );
 
-endmodule:rs_dec_kes_gam
+endmodule: rs_dec_kes_gam
 
 // ------------------------------------------
 
@@ -253,13 +253,13 @@ module rs_dec_kes_wdw
     parameter NSYM = 30
 )
 (
-    input logic clk,
-    input logic rst_n,
-    input logic init,
-    input logic reg_en,
+    input logic             clk,
+    input logic             rst_n,
+    input logic             init,
+    input logic             reg_en,
     input logic [WIDTH-1:0] syn_in [NSYM-1:0],
 
-    output logic [WIDTH-1:0] syn_wdw [ORDER:0]
+    output logic [WIDTH-1:0]    syn_wdw [ORDER:0]
 );
 
     // --- Internal Signals ---
@@ -322,7 +322,7 @@ module rs_dec_kes_wdw
 
     assign syn_wdw = syn_wdw_out;
 
-endmodule:rs_dec_kes_wdw
+endmodule: rs_dec_kes_wdw
 
 // ------------------------------------------
 
@@ -357,7 +357,7 @@ module rs_dec_kes_dis
         .out    (dis_out)
     );
     
-endmodule:rs_dec_kes_dis
+endmodule: rs_dec_kes_dis
 
 // ------------------------------------------
 
@@ -367,28 +367,28 @@ module rs_dec_kes_br
     parameter CNT_WIDTH = 5
 )
 (
-    input logic clk,
-    input logic rst_n,
-    input logic init,
-    input logic len_en,
-    input logic cnt_en,
+    input logic             clk,
+    input logic             rst_n,
+    input logic             init,
+    input logic             len_en,
+    input logic             cnt_en,
     input logic [WIDTH-1:0] dis_out,
 
-    output logic delta,
-    output logic cnt_end
+    output logic            delta,
+    output logic            cnt_end
 );
     
     // --- Internal Signals ---
-    logic [CNT_WIDTH-1:0] cnt_nxt;
-    logic [CNT_WIDTH-1:0] cnt_in;
-    logic [CNT_WIDTH-1:0] cnt_out;
-    logic [CNT_WIDTH-1:0] len_in;
-    logic [CNT_WIDTH-1:0] len_out;
-    logic [CNT_WIDTH-1:0] len_nxt;
-    logic [CNT_WIDTH-1:0] len_mux;
-    logic len_ge;
-    logic len_lte;
-    logic dis_neq_0;
+    logic [CNT_WIDTH-1:0]   cnt_nxt;
+    logic [CNT_WIDTH-1:0]   cnt_in;
+    logic [CNT_WIDTH-1:0]   cnt_out;
+    logic [CNT_WIDTH-1:0]   len_in;
+    logic [CNT_WIDTH-1:0]   len_out;
+    logic [CNT_WIDTH-1:0]   len_nxt;
+    logic [CNT_WIDTH-1:0]   len_mux;
+    logic                   len_ge;
+    logic                   len_lte;
+    logic                   dis_neq_0;
 
     // --- 1. 
     add_sub_nb #(.WIDTH(CNT_WIDTH)) Len_Sub (
@@ -458,7 +458,7 @@ module rs_dec_kes_br
     assign dis_neq_0 = |dis_out;
     assign delta = dis_neq_0 & len_lte;
 
-endmodule:rs_dec_kes_br
+endmodule: rs_dec_kes_br
 
 // ------------------------------------------
 
@@ -466,16 +466,16 @@ module rs_dec_kes_ctrl
 (
     input logic clk,
     input logic rst_n,
-    input logic valid_in,
+    input logic vld_in,
     input logic cnt_end,
 
     output logic init,
     output logic reg_en,
     output logic len_en,
     output logic cnt_en,
-    output logic valid_out,
-    output logic ready,
-    output logic error
+    output logic vld_out,
+    output logic sys_rdy,
+    output logic sys_err
 );
 
     // Định nghĩa các trạng thái của FSM
@@ -486,94 +486,94 @@ module rs_dec_kes_ctrl
         ERROR   
     } state_t;
 
-    state_t state_current, state_next; 
+    state_t state_cur, state_nxt; 
 
     // --- 1. FSM State Output Logic ---
     always_comb begin
-        case (state_current)
+        case (state_cur)
             IDLE: begin
-                // Mealy Action: Bắt tín hiệu và nạp data NGAY LẬP TỨC ở nhịp có valid_in
-                init        = valid_in ? 1'b1 : 1'b0;
-                reg_en      = valid_in ? 1'b1 : 1'b0;
-                len_en      = valid_in ? 1'b1 : 1'b0;
-                cnt_en      = valid_in ? 1'b1 : 1'b0;
-                valid_out   = 1'b0;
-                ready       = valid_in ? 1'b0 : 1'b1;
-                error       = 1'b0;
+                // Mealy Action: Bắt tín hiệu và nạp data NGAY LẬP TỨC ở nhịp có vld_in
+                init    = vld_in ? 1'b1 : 1'b0;
+                reg_en  = vld_in ? 1'b1 : 1'b0;
+                len_en  = vld_in ? 1'b1 : 1'b0;
+                cnt_en  = vld_in ? 1'b1 : 1'b0;
+                vld_out = 1'b0;
+                sys_rdy = vld_in ? 1'b0 : 1'b1;
+                sys_err = 1'b0;
             end
 
             CALC: begin
-                init        = 1'b0;
-                reg_en      = 1'b1;
-                len_en      = 1'b1;
-                cnt_en      = 1'b1;
-                valid_out   = 1'b0;
-                ready       = 1'b0;  
-                error       = 1'b0; 
+                init    = 1'b0;
+                reg_en  = 1'b1;
+                len_en  = 1'b1;
+                cnt_en  = 1'b1;
+                vld_out = 1'b0;
+                sys_rdy = 1'b0;  
+                sys_err = 1'b0; 
             end
 
             DONE: begin
-                init        = 1'b0;
-                reg_en      = 1'b0;
-                len_en      = 1'b0;
-                cnt_en      = 1'b0;
-                valid_out   = 1'b1; 
-                ready       = 1'b1;  
-                error       = 1'b0; 
+                init    = 1'b0;
+                reg_en  = 1'b0;
+                len_en  = 1'b0;
+                cnt_en  = 1'b0;
+                vld_out = 1'b1; 
+                sys_rdy = 1'b1;  
+                sys_err = 1'b0; 
             end
 
             ERROR: begin
                 // Mealy Action: Bắt tín hiệu và nạp data NGAY LẬP TỨC giống IDLE
-                // Nhưng vẫn giữ cờ error = 1 để hệ thống biết nó vừa thoát từ trạng thái lỗi
-                init        = valid_in ? 1'b1 : 1'b0;
-                reg_en      = valid_in ? 1'b1 : 1'b0;
-                len_en      = valid_in ? 1'b1 : 1'b0;
-                cnt_en      = valid_in ? 1'b1 : 1'b0;
-                valid_out   = 1'b0;
-                ready       = valid_in ? 1'b0 : 1'b1; 
-                error       = 1'b1; // Vẫn giữ 1'b1 ở nhịp này
+                // Nhưng vẫn giữ cờ sys_err = 1 để hệ thống biết nó vừa thoát từ trạng thái lỗi
+                init    = vld_in ? 1'b1 : 1'b0;
+                reg_en  = vld_in ? 1'b1 : 1'b0;
+                len_en  = vld_in ? 1'b1 : 1'b0;
+                cnt_en  = vld_in ? 1'b1 : 1'b0;
+                vld_out = 1'b0;
+                sys_rdy = vld_in ? 1'b0 : 1'b1; 
+                sys_err = 1'b1; // Vẫn giữ 1'b1 ở nhịp này
             end
 
             default: begin // ERROR
                 // Mealy Action: Bắt tín hiệu và nạp data NGAY LẬP TỨC giống IDLE
-                // Nhưng vẫn giữ cờ error = 1 để hệ thống biết nó vừa thoát từ trạng thái lỗi
-                init        = valid_in ? 1'b1 : 1'b0;
-                reg_en      = valid_in ? 1'b1 : 1'b0;
-                len_en      = valid_in ? 1'b1 : 1'b0;
-                cnt_en      = valid_in ? 1'b1 : 1'b0;
-                valid_out   = 1'b0;
-                ready       = valid_in ? 1'b0 : 1'b1; 
-                error       = 1'b1; // Vẫn giữ 1'b1 ở nhịp này
+                // Nhưng vẫn giữ cờ sys_err = 1 để hệ thống biết nó vừa thoát từ trạng thái lỗi
+                init    = vld_in ? 1'b1 : 1'b0;
+                reg_en  = vld_in ? 1'b1 : 1'b0;
+                len_en  = vld_in ? 1'b1 : 1'b0;
+                cnt_en  = vld_in ? 1'b1 : 1'b0;
+                vld_out = 1'b0;
+                sys_rdy = vld_in ? 1'b0 : 1'b1; 
+                sys_err = 1'b1; // Vẫn giữ 1'b1 ở nhịp này
             end
         endcase
     end
 
     // --- 2. FSM State Transition Logic ---
     always_comb begin
-        case (state_current)
+        case (state_cur)
                 IDLE: begin
-                    if (valid_in)   state_next = CALC;
-                    else            state_next = IDLE;
+                    if (vld_in) state_nxt = CALC;
+                    else        state_nxt = IDLE;
                 end
 
                 CALC: begin
-                    if (~valid_in & cnt_end)        state_next = DONE;
-                    else if (~valid_in & ~cnt_end)  state_next = CALC;
-                    else                            state_next = ERROR;
+                    if (~vld_in & cnt_end)          state_nxt = DONE;
+                    else if (~vld_in & ~cnt_end)    state_nxt = CALC;
+                    else                            state_nxt = ERROR;
                 end
 
                 DONE: begin
-                    if (~valid_in)   state_next = IDLE;
-                    else            state_next = ERROR;
+                    if (~vld_in)    state_nxt = IDLE;
+                    else            state_nxt = ERROR;
                 end
 
                 ERROR: begin
-                    if (valid_in)   state_next = CALC;
-                    else            state_next = IDLE;
+                    if (vld_in) state_nxt = CALC;
+                    else        state_nxt = IDLE;
                 end
 
                 default: begin
-                    state_next = ERROR;
+                    state_nxt = ERROR;
                 end
         endcase
     end
@@ -581,14 +581,14 @@ module rs_dec_kes_ctrl
     // --- 3. FSM State Register Update ---
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
-            state_current <= IDLE;  
+            state_cur <= IDLE;  
         end
         else begin
-            state_current <= state_next;   
+            state_cur <= state_nxt;   
         end
     end    
 
-endmodule:rs_dec_kes_ctrl
+endmodule: rs_dec_kes_ctrl
 
 // ------------------------------------------
 
@@ -597,20 +597,20 @@ module rs_dec_kes_lam_pe_i
     parameter WIDTH = 10
 )
 (
-    input logic clk,
-    input logic rst_n,
-    input logic delta,
-    input logic init,
-    input logic reg_en,
+    input logic             clk,
+    input logic             rst_n,
+    input logic             delta,
+    input logic             init,
+    input logic             reg_en,
     input logic [WIDTH-1:0] dis_out,
     input logic [WIDTH-1:0] gam_out,
     input logic [WIDTH-1:0] lam_out_prv,
     input logic [WIDTH-1:0] l_aux_out_prv,
-    input logic is_pe_0,
-    input logic is_pe_1,
+    input logic             is_pe_0,
+    input logic             is_pe_1,
 
-    output logic [WIDTH-1:0] lam_out,
-    output logic [WIDTH-1:0] l_aux_out
+    output logic [WIDTH-1:0]    lam_out,
+    output logic [WIDTH-1:0]    l_aux_out
 );
 
     // --- Internal Signals ---
@@ -685,7 +685,7 @@ module rs_dec_kes_lam_pe_i
         .q      (l_aux_out)
     );
 
-endmodule:rs_dec_kes_lam_pe_i
+endmodule: rs_dec_kes_lam_pe_i
 
 // ------------------------------------------
 
@@ -694,21 +694,21 @@ module rs_dec_kes_ome_pe_i
     parameter WIDTH = 10
 )
 (
-    input logic clk,
-    input logic rst_n,
-    input logic delta,
-    input logic init,
-    input logic reg_en,
+    input logic             clk,
+    input logic             rst_n,
+    input logic             delta,
+    input logic             init,
+    input logic             reg_en,
     input logic [WIDTH-1:0] dis_out,
     input logic [WIDTH-1:0] gam_out,
     input logic [WIDTH-1:0] ome_out_prv,
     input logic [WIDTH-1:0] o_aux_out_prv,
     input logic [WIDTH-1:0] syn_in,
     input logic [WIDTH-1:0] syn_in_prv,
-    input logic is_pe_0,
+    input logic             is_pe_0,
 
-    output logic [WIDTH-1:0] ome_out,
-    output logic [WIDTH-1:0] o_aux_out
+    output logic [WIDTH-1:0]    ome_out,
+    output logic [WIDTH-1:0]    o_aux_out
 );
 
     // --- Internal Signals ---
@@ -783,4 +783,4 @@ module rs_dec_kes_ome_pe_i
         .q      (o_aux_out)
     );
 
-endmodule:rs_dec_kes_ome_pe_i
+endmodule: rs_dec_kes_ome_pe_i

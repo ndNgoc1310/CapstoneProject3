@@ -5,19 +5,19 @@ module rs_dec_chien
     CNT_WIDTH = 10
 )
 (
-    input logic clk,
-    input logic rst_n,
-    input logic valid_in,
+    input logic             clk,
+    input logic             rst_n,
+    input logic             vld_in,
     input logic [WIDTH-1:0] lam_in [ORDER:0],
     input logic [WIDTH-1:0] ome_in [ORDER:0],
 
-    output logic err_flg,
-    output logic [WIDTH-1:0] l_val_der,
-    output logic [WIDTH-1:0] o_val,
-    output logic sop_out,
-    output logic valid_out,
-    output logic ready,
-    output logic error
+    output logic                err_flg,
+    output logic [WIDTH-1:0]    l_val_der,
+    output logic [WIDTH-1:0]    o_val,
+    output logic                sop_out,
+    output logic                vld_out,
+    output logic                sys_rdy,
+    output logic                sys_err
 );
 
     // Internal signals
@@ -61,20 +61,20 @@ module rs_dec_chien
     rs_dec_chien_ctrl CHIEN_CTRL (
         .clk        (clk),
         .rst_n      (rst_n),
-        .valid_in   (valid_in),
+        .vld_in     (vld_in),
         .cnt_end    (cnt_end),
 
         .init       (init),
         .reg_en     (reg_en),
         .cnt_en     (cnt_en),
         .sop_out    (sop_out),
-        .valid_out  (valid_out),
-        .ready      (ready),
-        .error      (error)
+        .vld_out    (vld_out),
+        .sys_rdy    (sys_rdy),
+        .sys_err    (sys_err)
     );
 
 
-endmodule:rs_dec_chien
+endmodule: rs_dec_chien
 
 // --------------------------------------------------------------
 
@@ -84,21 +84,21 @@ module rs_dec_chien_lam
     ORDER = 15
 )
 (
-    input logic clk,
-    input logic rst_n,
-    input logic init,
-    input logic reg_en,
+    input logic             clk,
+    input logic             rst_n,
+    input logic             init,
+    input logic             reg_en,
     input logic [WIDTH-1:0] lam_in [ORDER:0],
 
-    output logic err_flg,
-    output logic [WIDTH-1:0] l_val_der
+    output logic                err_flg,
+    output logic [WIDTH-1:0]    l_val_der
 );
 
     // --- Internal Signals ---
-    logic [WIDTH-1:0] l_val_in [ORDER:0];
-    logic [WIDTH-1:0] l_val_out [ORDER:0];
+    logic [WIDTH-1:0] l_val_in      [ORDER:0];
+    logic [WIDTH-1:0] l_val_out     [ORDER:0];
     logic [WIDTH-1:0] l_val_out_mul [ORDER:0];
-    logic [WIDTH-1:0] l_val_der_in [(ORDER+1)/2-1:0];
+    logic [WIDTH-1:0] l_val_der_in  [(ORDER+1)/2-1:0];
     logic [WIDTH-1:0] l_val;
 
     // --- 1.
@@ -161,7 +161,7 @@ module rs_dec_chien_lam
         .out    (l_val_der)
     );
 
-endmodule:rs_dec_chien_lam
+endmodule: rs_dec_chien_lam
 
 // --------------------------------------------------------------
 
@@ -171,18 +171,18 @@ module rs_dec_chien_ome
     ORDER = 15
 )
 (
-    input logic clk,
-    input logic rst_n,
-    input logic init,
-    input logic reg_en,
+    input logic             clk,
+    input logic             rst_n,
+    input logic             init,
+    input logic             reg_en,
     input logic [WIDTH-1:0] ome_in [ORDER:0],
 
-    output logic [WIDTH-1:0] o_val
+    output logic [WIDTH-1:0]    o_val
 );
 
     // --- Internal Signals ---
-    logic [WIDTH-1:0] o_val_in [ORDER:0];
-    logic [WIDTH-1:0] o_val_out [ORDER:0];
+    logic [WIDTH-1:0] o_val_in      [ORDER:0];
+    logic [WIDTH-1:0] o_val_out     [ORDER:0];
     logic [WIDTH-1:0] o_val_out_mul [ORDER:0];
 
     // --- 1.
@@ -229,7 +229,7 @@ module rs_dec_chien_ome
         .out    (o_val)
     );
 
-endmodule:rs_dec_chien_ome
+endmodule: rs_dec_chien_ome
 
 // --------------------------------------------------------------
 
@@ -279,7 +279,7 @@ module rs_dec_chien_cnt
     // --- 2.
     assign cnt_end = &{cnt_out[9], cnt_out[4:0]};
 
-endmodule:rs_dec_chien_cnt
+endmodule: rs_dec_chien_cnt
 
 // --------------------------------------------------------------
 
@@ -287,16 +287,16 @@ module rs_dec_chien_ctrl
 (
     input logic clk,
     input logic rst_n,
-    input logic valid_in,
+    input logic vld_in,
     input logic cnt_end,
 
     output logic init,
     output logic reg_en,
     output logic cnt_en,
     output logic sop_out,
-    output logic valid_out,
-    output logic ready,
-    output logic error
+    output logic vld_out,
+    output logic sys_rdy,
+    output logic sys_err
 );
 
     // Định nghĩa các trạng thái của FSM
@@ -309,119 +309,119 @@ module rs_dec_chien_ctrl
         ERROR   
     } state_t;
 
-    state_t state_current, state_next; 
+    state_t state_cur, state_nxt; 
 
     // --- 1. FSM State Output Logic ---
     always_comb begin
-        case (state_current)
+        case (state_cur)
             IDLE: begin
-                init        = 1'b0;
-                reg_en      = 1'b0;
-                cnt_en      = 1'b0;
-                sop_out     = 1'b0;
-                valid_out   = 1'b0;
-                ready       = 1'b1;  
-                error       = 1'b0; 
+                init    = 1'b0;
+                reg_en  = 1'b0;
+                cnt_en  = 1'b0;
+                sop_out = 1'b0;
+                vld_out = 1'b0;
+                sys_rdy = 1'b1;  
+                sys_err = 1'b0; 
             end
 
             INIT: begin
-                init        = 1'b1;
-                reg_en      = 1'b1;
-                cnt_en      = 1'b1;
-                sop_out     = 1'b0;
-                valid_out   = 1'b0;
-                ready       = 1'b0;  
-                error       = 1'b0; 
+                init    = 1'b1;
+                reg_en  = 1'b1;
+                cnt_en  = 1'b1;
+                sop_out = 1'b0;
+                vld_out = 1'b0;
+                sys_rdy = 1'b0;  
+                sys_err = 1'b0; 
             end
 
             CALC1: begin
-                init        = 1'b0;
-                reg_en      = 1'b1;
-                cnt_en      = 1'b1;
-                sop_out     = 1'b1;
-                valid_out   = 1'b1;
-                ready       = 1'b0;  
-                error       = 1'b0; 
+                init    = 1'b0;
+                reg_en  = 1'b1;
+                cnt_en  = 1'b1;
+                sop_out = 1'b1;
+                vld_out = 1'b1;
+                sys_rdy = 1'b0;  
+                sys_err = 1'b0; 
             end
 
             CALC2: begin
-                init        = 1'b0;
-                reg_en      = 1'b1;
-                cnt_en      = 1'b1;
-                sop_out     = 1'b0;
-                valid_out   = 1'b1;
-                ready       = 1'b0;  
-                error       = 1'b0; 
+                init    = 1'b0;
+                reg_en  = 1'b1;
+                cnt_en  = 1'b1;
+                sop_out = 1'b0;
+                vld_out = 1'b1;
+                sys_rdy = 1'b0;  
+                sys_err = 1'b0; 
             end
 
             DONE: begin
-                init        = 1'b0;
-                reg_en      = 1'b0;
-                cnt_en      = 1'b0;
-                sop_out     = 1'b0;
-                valid_out   = 1'b0; 
-                ready       = 1'b1;  
-                error       = 1'b0; 
+                init    = 1'b0;
+                reg_en  = 1'b0;
+                cnt_en  = 1'b0;
+                sop_out = 1'b0;
+                vld_out = 1'b0; 
+                sys_rdy = 1'b1;  
+                sys_err = 1'b0; 
             end
 
             ERROR: begin
-                init        = 1'b0;
-                reg_en      = 1'b0;
-                cnt_en      = 1'b0;
-                sop_out     = 1'b0;
-                valid_out   = 1'b0; 
-                ready       = 1'b1;  
-                error       = 1'b1; 
+                init    = 1'b0;
+                reg_en  = 1'b0;
+                cnt_en  = 1'b0;
+                sop_out = 1'b0;
+                vld_out = 1'b0; 
+                sys_rdy = 1'b1;  
+                sys_err = 1'b1; 
             end
 
             default: begin
-                init        = 1'b0;
-                reg_en      = 1'b0;
-                cnt_en      = 1'b0;
-                sop_out     = 1'b0;
-                valid_out   = 1'b0; 
-                ready       = 1'b1;  
-                error       = 1'b1; 
+                init    = 1'b0;
+                reg_en  = 1'b0;
+                cnt_en  = 1'b0;
+                sop_out = 1'b0;
+                vld_out = 1'b0; 
+                sys_rdy = 1'b1;  
+                sys_err = 1'b1; 
             end
         endcase
     end
 
     // --- 2. FSM State Transition Logic ---
     always_comb begin
-        case (state_current)
+        case (state_cur)
                 IDLE: begin
-                    if (valid_in)   state_next = INIT;
-                    else            state_next = IDLE;
+                    if (vld_in) state_nxt = INIT;
+                    else        state_nxt = IDLE;
                 end
 
                 INIT: begin
-                    if (~valid_in)  state_next = CALC1;
-                    else            state_next = ERROR;
+                    if (~vld_in)    state_nxt = CALC1;
+                    else            state_nxt = ERROR;
                 end
 
                 CALC1: begin
-                    if (~valid_in)  state_next = CALC2;
-                    else            state_next = ERROR;
+                    if (~vld_in)    state_nxt = CALC2;
+                    else            state_nxt = ERROR;
                 end
 
                 CALC2: begin
-                    if (~valid_in & cnt_end)        state_next = DONE;
-                    else if (~valid_in & ~cnt_end)  state_next = CALC2;
-                    else                            state_next = ERROR;
+                    if (~vld_in & cnt_end)          state_nxt = DONE;
+                    else if (~vld_in & ~cnt_end)    state_nxt = CALC2;
+                    else                            state_nxt = ERROR;
                 end
 
                 DONE: begin
-                    if (valid_in)   state_next = INIT;
-                    else            state_next = IDLE;
+                    if (vld_in) state_nxt = INIT;
+                    else        state_nxt = IDLE;
                 end
 
                 ERROR: begin
-                    if (valid_in)   state_next = INIT;
-                    else            state_next = IDLE;
+                    if (vld_in) state_nxt = INIT;
+                    else        state_nxt = IDLE;
                 end
 
                 default: begin
-                    state_next = ERROR;
+                    state_nxt = ERROR;
                 end
         endcase
     end    
@@ -429,12 +429,12 @@ module rs_dec_chien_ctrl
     // --- 3. FSM State Register Update ---
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
-            state_current <= IDLE;  
+            state_cur <= IDLE;  
         end
         else begin
-            state_current <= state_next;   
+            state_cur <= state_nxt;   
         end
     end    
     
-endmodule:rs_dec_chien_ctrl
+endmodule: rs_dec_chien_ctrl
 

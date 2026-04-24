@@ -26,7 +26,7 @@ module led_7s_enc_hex_1d (
 		endcase
 	end
 
-endmodule : led_7s_enc_hex_1d
+endmodule: led_7s_enc_hex_1d
 
 module led_7s_enc_dec_1d (
 	input   logic [3:0] dec_in,
@@ -49,7 +49,7 @@ module led_7s_enc_dec_1d (
 		endcase
 	end
 
-endmodule:led_7s_enc_dec_1d
+endmodule: led_7s_enc_dec_1d
 
 module led_7s_enc_dec_2d (
 	input   logic [6:0] dec_in,
@@ -73,7 +73,7 @@ module led_7s_enc_dec_2d (
 		.enc_out	(enc_out_1)
 	);
 
-endmodule:led_7s_enc_dec_2d
+endmodule: led_7s_enc_dec_2d
 
 module led_7s_enc_dec_3d (
 	input   logic [9:0] dec_in,
@@ -103,7 +103,7 @@ module led_7s_enc_dec_3d (
 		.enc_out	(enc_out_2)
 	);
 
-endmodule:led_7s_enc_dec_3d
+endmodule: led_7s_enc_dec_3d
 
 module led_7s_enc_pass_fail
 (
@@ -124,7 +124,7 @@ module led_7s_enc_pass_fail
 			enc_out_3 = 7'b000_1110;	// 0x0E (F)		
 		end
 	end
-endmodule:led_7s_enc_pass_fail
+endmodule: led_7s_enc_pass_fail
 
 module led_7s_enc_ps_fl
 (
@@ -141,4 +141,4 @@ module led_7s_enc_ps_fl
 			enc_out_1 = 7'b000_1110;	// 0x0E (F)		
 		end
 	end
-endmodule:led_7s_enc_ps_fl
+endmodule: led_7s_enc_ps_fl

@@ -19,13 +19,13 @@ module rs_dec_kes_tb;
     logic rst_n;
 
     // DUT Inputs
-    logic valid_in;
+    logic vld_in;
     logic [WIDTH-1:0] syn_in [NSYM-1:0];
 
     // DUT Outputs
-    logic valid_out;
-    logic ready;
-    logic error;
+    logic vld_out;
+    logic sys_rdy;
+    logic sys_err;
     logic [WIDTH-1:0] lam_out [ORDER:0];
     logic [WIDTH-1:0] ome_out [ORDER:0];
 
@@ -52,11 +52,11 @@ module rs_dec_kes_tb;
     ) DUT (
         .clk        (clk),
         .rst_n      (rst_n),
-        .valid_in   (valid_in),
+        .vld_in   (vld_in),
         .syn_in     (syn_in),
-        .valid_out  (valid_out),
-        .ready      (ready),
-        .error      (error),
+        .vld_out  (vld_out),
+        .sys_rdy      (sys_rdy),
+        .sys_err      (sys_err),
         .lam_out    (lam_out),
         .ome_out    (ome_out)
     );
@@ -98,7 +98,7 @@ module rs_dec_kes_tb;
     // ---------------------------------------------------------
     initial begin
         // Init signals
-        valid_in = 1'b0;
+        vld_in = 1'b0;
         for (int i = 0; i < NSYM; i++) syn_in[i] = '0;
 
         // Open Files
@@ -142,24 +142,24 @@ module rs_dec_kes_tb;
             test_idx++;
 
             // --- C. FSM Protocol (Driving) ---
-            // Wait until DUT is ready to accept new data
-            wait(ready == 1'b1);
+            // Wait until DUT is sys_rdy to accept new data
+            wait(sys_rdy == 1'b1);
             @(posedge clk); // Align to clock edge
 
-            // Pulse valid_in for exactly 1 cycle
-            valid_in <= 1'b1;
+            // Pulse vld_in for exactly 1 cycle
+            vld_in <= 1'b1;
             @(posedge clk);
-            valid_in <= 1'b0;
+            vld_in <= 1'b0;
 
             // --- D. FSM Protocol (Catching & Checking) ---
-            // Fork-join to catch either valid_out (Success) or error (Fail)
+            // Fork-join to catch either vld_out (Success) or sys_err (Fail)
             fork : FSM_WAIT
                 begin
-                    wait(valid_out == 1'b1);
-                    disable FSM_WAIT; // Kill the error-waiting thread
+                    wait(vld_out == 1'b1);
+                    disable FSM_WAIT; // Kill the sys_err-waiting thread
                 end
                 begin
-                    wait(error == 1'b1);
+                    wait(sys_err == 1'b1);
                     disable FSM_WAIT; // Kill the valid-waiting thread
                 end
             join
@@ -167,18 +167,18 @@ module rs_dec_kes_tb;
             // Re-align to evaluation edge
             #1; 
 
-            // Case 1: FSM threw an error flag
-            if (error == 1'b1) begin
+            // Case 1: FSM threw an sys_err flag
+            if (sys_err == 1'b1) begin
                 $display("[%0t] Testcase %0d: FAIL (FSM Error asserted)", $time, test_idx);
                 $fdisplay(log_fd, "[%0t] Testcase %0d: FAIL (FSM Error asserted)", $time, test_idx);
                 fail_cnt++;
                 
                 // Wait for FSM to return to IDLE/READY state before injecting next vector
-                wait(ready == 1'b1);
+                wait(sys_rdy == 1'b1);
                 continue; 
             end
 
-            // Case 2: DUT finished calculating, valid_out is high -> Compare arrays
+            // Case 2: DUT finished calculating, vld_out is high -> Compare arrays
             mismatch = 0;
             
             // Check Lambda values
@@ -240,4 +240,4 @@ module rs_dec_kes_tb;
         $finish;
     end
 
-endmodule : rs_dec_kes_tb
+endmodule: rs_dec_kes_tb

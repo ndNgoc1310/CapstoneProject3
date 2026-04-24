@@ -17,18 +17,18 @@ module top_tb;
     logic rst_n;
 
     // Encoder Interface
-    logic             enc_sop_in, enc_valid_in;
-    logic [WIDTH-1:0] enc_data_in;
-    logic             enc_sop_out, enc_valid_out;
-    logic [WIDTH-1:0] enc_data_out;
-    logic             enc_ready, enc_error;
+    logic             enc_sop_in, enc_vld_in;
+    logic [WIDTH-1:0] enc_dat_in;
+    logic             enc_sop_out, enc_vld_out;
+    logic [WIDTH-1:0] enc_dat_out;
+    logic             enc_rdy, enc_err;
 
     // Decoder Interface
-    logic             dec_sop_in, dec_valid_in;
-    logic [WIDTH-1:0] dec_data_in;
-    logic             dec_sop_out, dec_valid_out;
-    logic [WIDTH-1:0] dec_data_out;
-    logic             dec_ready, dec_error;
+    logic             dec_sop_in, dec_vld_in;
+    logic [WIDTH-1:0] dec_dat_in;
+    logic             dec_sop_out, dec_vld_out;
+    logic [WIDTH-1:0] dec_dat_out;
+    logic             dec_rdy, dec_err;
     logic             dec_err_flg_out;
     logic [WIDTH-1:0] dec_err_mag_out;
 
@@ -62,23 +62,23 @@ module top_tb;
 
         // Encoder
         .enc_sop_in       (enc_sop_in),
-        .enc_valid_in     (enc_valid_in),
-        .enc_data_in      (enc_data_in),
+        .enc_vld_in     (enc_vld_in),
+        .enc_dat_in      (enc_dat_in),
         .enc_sop_out      (enc_sop_out),
-        .enc_valid_out    (enc_valid_out),
-        .enc_data_out     (enc_data_out),
-        .enc_ready        (enc_ready),
-        .enc_error        (enc_error),
+        .enc_vld_out    (enc_vld_out),
+        .enc_dat_out     (enc_dat_out),
+        .enc_rdy        (enc_rdy),
+        .enc_err        (enc_err),
 
         // Decoder
         .dec_sop_in       (dec_sop_in),
-        .dec_valid_in     (dec_valid_in),
-        .dec_data_in      (dec_data_in),
-        .dec_ready        (dec_ready),
+        .dec_vld_in     (dec_vld_in),
+        .dec_dat_in      (dec_dat_in),
+        .dec_rdy        (dec_rdy),
         .dec_sop_out      (dec_sop_out),
-        .dec_valid_out    (dec_valid_out),
-        .dec_data_out     (dec_data_out),
-        .dec_error        (dec_error),
+        .dec_vld_out    (dec_vld_out),
+        .dec_dat_out     (dec_dat_out),
+        .dec_err        (dec_err),
         .dec_err_flg_out  (dec_err_flg_out),
         .dec_err_mag_out  (dec_err_mag_out)
     );
@@ -110,8 +110,8 @@ module top_tb;
     // --- 5. MAIN VERIFICATION LOOP ---
     initial begin
         // Init signals
-        {enc_sop_in, enc_valid_in, enc_data_in} = '0;
-        {dec_sop_in, dec_valid_in, dec_data_in} = '0;
+        {enc_sop_in, enc_vld_in, enc_dat_in} = '0;
+        {dec_sop_in, dec_vld_in, dec_dat_in} = '0;
 
         in_fd  = $fopen("top_in.hex", "r");
         exp_fd = $fopen("top_out_exp.hex", "r");
@@ -136,7 +136,7 @@ module top_tb;
             for(int i=0; i<CW_N; i++)  void'($fscanf(in_fd, "%x", dec_in_mem[i]));
 
             // B. Đọc dữ liệu Expected
-            void'($fscanf(exp_fd, "%s %b", str_buf, exp_dec_err_bit)); // DEC_ERROR x
+            void'($fscanf(exp_fd, "%s %b", str_buf, exp_dec_err_bit)); // DEC_err x
             void'($fscanf(exp_fd, "%s", str_buf));                    // DEC_OUT
             for(int i=0; i<CW_N; i++) void'($fscanf(exp_fd, "%x", exp_dec_out_mem[i]));
             void'($fscanf(exp_fd, "%s %b", str_buf, exp_err_flg_reg)); // ERR_FLG x (544 bit)
@@ -150,28 +150,28 @@ module top_tb;
             fork
                 // Thread 1: Cấp dữ liệu Encoder
                 begin
-                    wait(enc_ready);
+                    wait(enc_rdy);
                     @(posedge clk);
                     for (int i=0; i<MSG_K; i++) begin
-                        enc_valid_in <= 1;
+                        enc_vld_in <= 1;
                         enc_sop_in   <= (i == 0);
-                        enc_data_in  <= enc_in_mem[i];
+                        enc_dat_in  <= enc_in_mem[i];
                         @(posedge clk);
                     end
-                    {enc_sop_in, enc_valid_in, enc_data_in} <= '0;
+                    {enc_sop_in, enc_vld_in, enc_dat_in} <= '0;
                 end
 
                 // Thread 2: Cấp dữ liệu Decoder
                 begin
-                    wait(dec_ready);
+                    wait(dec_rdy);
                     @(posedge clk);
                     for (int i=0; i<CW_N; i++) begin
-                        dec_valid_in <= 1;
+                        dec_vld_in <= 1;
                         dec_sop_in   <= (i == 0);
-                        dec_data_in  <= dec_in_mem[i];
+                        dec_dat_in  <= dec_in_mem[i];
                         @(posedge clk);
                     end
-                    {dec_sop_in, dec_valid_in, dec_data_in} <= '0;
+                    {dec_sop_in, dec_vld_in, dec_dat_in} <= '0;
                 end
 
                 // Thread 3: Checker logic
@@ -179,17 +179,17 @@ module top_tb;
                     bit tc_fail;
                     tc_fail = 0;
                     
-                    wait(dec_valid_out || dec_error);
+                    wait(dec_vld_out || dec_err);
                     #1; // Đợi tín hiệu tổ hợp ổn định
                     
-                    if (dec_error) begin
-                        if (dec_error !== exp_dec_err_bit) begin
-                            $display("  FAIL: dec_error Mismatch! Exp: %b, Act: %b", exp_dec_err_bit, dec_error);
+                    if (dec_err) begin
+                        if (dec_err !== exp_dec_err_bit) begin
+                            $display("  FAIL: dec_err Mismatch! Exp: %b, Act: %b", exp_dec_err_bit, dec_err);
                             tc_fail = 1;
                         end
                         
-                        {enc_sop_in, enc_valid_in, enc_data_in} <= '0;
-                        {dec_sop_in, dec_valid_in, dec_data_in} <= '0;
+                        {enc_sop_in, enc_vld_in, enc_dat_in} <= '0;
+                        {dec_sop_in, dec_vld_in, dec_dat_in} <= '0;
                         
                         #10; // Chờ tín hiệu xả
                         disable fork; // Ngắt testcase do lỗi Protocol
@@ -205,20 +205,20 @@ module top_tb;
                             
                             for (int c=0; c<CW_N; c++) begin
                                 @(posedge clk);
-                                if (c < CW_N-1) wait(dec_valid_out);
+                                if (c < CW_N-1) wait(dec_vld_out);
                             end
                             
                         end else begin
                             // Kịch bản <= 15 lỗi (Mode 0, 1, 2, 3) -> Kiểm tra độ chính xác tuyệt đối
                             for (int c=0; c<CW_N; c++) begin
                                 #1; // Đợi sườn clock
-                                if (dec_data_out !== exp_dec_out_mem[CW_N - 1 - c] ||
+                                if (dec_dat_out !== exp_dec_out_mem[CW_N - 1 - c] ||
                                     dec_err_flg_out !== exp_err_flg_reg[c] ||
                                     dec_err_mag_out !== exp_err_mag_mem[CW_N - 1 - c]) begin
                                     
                                     tc_fail = 1;
                                     $display("  MISMATCH @ Cycle %0d (Symbol %0d)", c, CW_N - 1 - c);
-                                    $display("    DATA: Exp=%x Act=%x", exp_dec_out_mem[CW_N - 1 - c], dec_data_out);
+                                    $display("    DATA: Exp=%x Act=%x", exp_dec_out_mem[CW_N - 1 - c], dec_dat_out);
                                     $display("    FLAG: Exp=%b Act=%b", exp_err_flg_reg[c], dec_err_flg_out);
                                     $display("    MAG : Exp=%x Act=%x", exp_err_mag_mem[CW_N - 1 - c], dec_err_mag_out);
                                     
@@ -226,7 +226,7 @@ module top_tb;
                                 end
                                 
                                 @(posedge clk);
-                                if (c < CW_N-1) wait(dec_valid_out);
+                                if (c < CW_N-1) wait(dec_vld_out);
                             end
                         end
                     end

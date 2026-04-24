@@ -21,13 +21,13 @@ module rs_dec_syn_tb;
 
     // DUT Inputs
     logic             sop_in;
-    logic             valid_in;
-    logic [WIDTH-1:0] data_in;
+    logic             vld_in;
+    logic [WIDTH-1:0] dat_in;
 
     // DUT Outputs
-    logic             valid_out;
-    logic             ready;
-    logic             error;
+    logic             vld_out;
+    logic             sys_rdy;
+    logic             sys_err;
     // Unpacked Array matching DUT exactly
     logic [WIDTH-1:0] syn_out [NSYM-1:0];
 
@@ -53,11 +53,11 @@ module rs_dec_syn_tb;
         .clk        (clk),
         .rst_n      (rst_n),
         .sop_in     (sop_in),
-        .valid_in   (valid_in),
-        .data_in    (data_in),
-        .valid_out  (valid_out),
-        .ready      (ready),
-        .error      (error),
+        .vld_in   (vld_in),
+        .dat_in    (dat_in),
+        .vld_out  (vld_out),
+        .sys_rdy      (sys_rdy),
+        .sys_err      (sys_err),
         .syn_out    (syn_out)
     );
 
@@ -99,8 +99,8 @@ module rs_dec_syn_tb;
     initial begin
         // Khởi tạo tín hiệu mặc định
         sop_in   = 1'b0;
-        valid_in = 1'b0;
-        data_in  = '0;
+        vld_in = 1'b0;
+        dat_in  = '0;
 
         // Mở file Test Vectors và Log
         in_fd  = $fopen("rs_dec_syn_in.hex", "r");
@@ -143,7 +143,7 @@ module rs_dec_syn_tb;
             // QUÁ TRÌNH BƠM DỮ LIỆU VÀ SO SÁNH (CHẠY SONG SONG)
             // =========================================================
             // Chờ module sẵn sàng nhận gói tin mới
-            wait(ready == 1'b1);
+            wait(sys_rdy == 1'b1);
             @(posedge clk);
             
             mismatch = 0; // Đặt lại cờ lỗi cho mỗi test case
@@ -152,23 +152,23 @@ module rs_dec_syn_tb;
                 // --- THREAD 1: BƠM DỮ LIỆU (STIMULUS) ---
                 begin
                     for (int c = 0; c < PACKET_SIZE; c++) begin
-                        valid_in <= 1'b1;
-                        data_in <= in_array[c];
+                        vld_in <= 1'b1;
+                        dat_in <= in_array[c];
                         sop_in <= (c == 0) ? 1'b1 : 1'b0;
                         @(posedge clk);
                     end
                     // Kết thúc bơm gói tin
-                    valid_in <= 1'b0;
+                    vld_in <= 1'b0;
                     sop_in <= 1'b0;
-                    data_in <= '0;
+                    dat_in <= '0;
                 end
 
                 // --- THREAD 2: ĐÓN KẾT QUẢ (CHECKER) ---
                 begin
-                    wait(valid_out == 1'b1 || error == 1'b1);
+                    wait(vld_out == 1'b1 || sys_err == 1'b1);
 
                     // Xử lý nếu FSM nảy cờ lỗi
-                    if (error == 1'b1) begin
+                    if (sys_err == 1'b1) begin
                         $display("[%0t] Testcase %0d: \033[1;31mFAIL\033[0m (FSM Error Asserted!)", $time, test_idx);
                         $fdisplay(log_fd, "[%0t] Testcase %0d: FAIL (FSM Error Asserted!)", $time, test_idx);
                         fail_cnt++;
@@ -201,8 +201,8 @@ module rs_dec_syn_tb;
             join
             
             // Đợi FSM reset lại state IDLE nếu bị lỗi
-            if (error == 1'b1) begin
-                wait(ready == 1'b1);
+            if (sys_err == 1'b1) begin
+                wait(sys_rdy == 1'b1);
                 continue;
             end
 
@@ -234,4 +234,4 @@ module rs_dec_syn_tb;
         $finish;
     end
 
-endmodule:rs_dec_syn_tb
+endmodule: rs_dec_syn_tb

@@ -149,4 +149,4 @@ module rs_dec_forney_tb;
         $finish;
     end
 
-endmodule:rs_dec_forney_tb
+endmodule: rs_dec_forney_tb

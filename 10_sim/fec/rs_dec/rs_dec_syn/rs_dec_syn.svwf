@@ -24,7 +24,7 @@ set id [waveform add -signals [subst  {
 	} ]]
 waveform format $id -color #ff9900 -namecolor #ff9900
 set id [waveform add -signals [subst  {
-	{[format {rs_dec_syn_tb.DUT.valid_in}]}
+	{[format {rs_dec_syn_tb.DUT.vld_in}]}
 	} ]]
 waveform format $id -color #ff9900 -namecolor #ff9900
 set id [waveform add -signals [subst  {
@@ -32,11 +32,11 @@ set id [waveform add -signals [subst  {
 	} ]]
 waveform format $id -color #ff9900 -namecolor #ff9900
 set id [waveform add -signals [subst  {
-	{[format {rs_dec_syn_tb.DUT.valid_out}]}
+	{[format {rs_dec_syn_tb.DUT.vld_out}]}
 	} ]]
 waveform format $id -color #ff0099 -namecolor #ff0099
 set id [waveform add -signals [subst  {
-	{[format {rs_dec_syn_tb.DUT.ready}]}
+	{[format {rs_dec_syn_tb.DUT.sys_rdy}]}
 	} ]]
 waveform format $id -color #ff0099 -namecolor #ff0099
 set id [waveform add -signals [subst  {

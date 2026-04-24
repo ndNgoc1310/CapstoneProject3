@@ -21,13 +21,13 @@ module rs_dec_lifo_tb;
     // DUT Inputs
     logic             push_sop;
     logic             push_en;
-    logic [WIDTH-1:0] data_in;
+    logic [WIDTH-1:0] dat_in;
     logic             pop_sop;
     logic             pop_en;
 
     // DUT Outputs
-    logic             valid_out;
-    logic [WIDTH-1:0] data_out;
+    logic             vld_out;
+    logic [WIDTH-1:0] dat_out;
 
     // File descriptors & Verification variables
     int in_fd, exp_fd, log_fd;
@@ -52,11 +52,11 @@ module rs_dec_lifo_tb;
         .rst_n      (rst_n),
         .push_sop   (push_sop),
         .push_en    (push_en),
-        .data_in    (data_in),
+        .dat_in    (dat_in),
         .pop_sop    (pop_sop),
         .pop_en     (pop_en),
-        .valid_out  (valid_out),
-        .data_out   (data_out)
+        .vld_out  (vld_out),
+        .dat_out   (dat_out)
     );
 
     // ---------------------------------------------------------
@@ -98,7 +98,7 @@ module rs_dec_lifo_tb;
         // Khởi tạo tín hiệu mặc định (Default States)
         push_sop = 1'b0;
         push_en  = 1'b0;
-        data_in  = '0;
+        dat_in  = '0;
         pop_sop  = 1'b0;
         pop_en   = 1'b0;
 
@@ -146,14 +146,14 @@ module rs_dec_lifo_tb;
                 @(posedge clk);
                 push_en  <= 1'b1;
                 push_sop <= (c == 0) ? 1'b1 : 1'b0;
-                data_in  <= in_array[c];
+                dat_in  <= in_array[c];
             end
             
             // Kết thúc ghi gói tin
             @(posedge clk);
             push_en  <= 1'b0;
             push_sop <= 1'b0;
-            data_in  <= '0;
+            dat_in  <= '0;
 
             // Nghỉ 2 nhịp clock để mô phỏng độ trễ thực tế giữa các block
             #20; 
@@ -179,14 +179,14 @@ module rs_dec_lifo_tb;
                 #1; 
                 
                 // 3. Kiểm tra dữ liệu bị trễ 1 nhịp (Read Latency = 1)
-                // Dữ liệu đọc ở nhịp c-1 sẽ xuất hiện trên đường data_out tại nhịp c
+                // Dữ liệu đọc ở nhịp c-1 sẽ xuất hiện trên đường dat_out tại nhịp c
                 if (c > 0) begin
-                    if (data_out !== exp_array[c-1] || valid_out !== 1'b1) begin
+                    if (dat_out !== exp_array[c-1] || vld_out !== 1'b1) begin
                         mismatch = 1;
                         $display("\033[1;31m[FAIL]\033[0m Test %0d | Cycle %0d: Exp = %x, Act = %x (Valid = %b)", 
-                                 test_idx, c-1, exp_array[c-1], data_out, valid_out);
+                                 test_idx, c-1, exp_array[c-1], dat_out, vld_out);
                         $fdisplay(log_fd, "[FAIL] Test %0d | Cycle %0d: Exp = %x, Act = %x (Valid = %b)", 
-                                 test_idx, c-1, exp_array[c-1], data_out, valid_out);
+                                 test_idx, c-1, exp_array[c-1], dat_out, vld_out);
                     end
                 end
             end
@@ -235,4 +235,4 @@ module rs_dec_lifo_tb;
         $finish;
     end
 
-endmodule:rs_dec_lifo_tb
+endmodule: rs_dec_lifo_tb

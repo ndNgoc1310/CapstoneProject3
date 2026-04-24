@@ -9,11 +9,11 @@ module err_inject
 (
     input  logic clk, rst_n,
     input  logic [2:0] mode_sw,
-    input  logic sop_in, valid_in,
-    input  logic [WIDTH-1:0] data_in,
+    input  logic sop_in, vld_in,
+    input  logic [WIDTH-1:0] dat_in,
     
-    output logic sop_out, valid_out,
-    output logic [WIDTH-1:0] data_out,
+    output logic sop_out, vld_out,
+    output logic [WIDTH-1:0] dat_out,
     
     // Memory Interface cho Wrapper đọc
     output logic [9:0] injected_count,
@@ -47,7 +47,7 @@ module err_inject
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
             lfsr <= 16'hACE1; // Seed khác 0 (Rất quan trọng cho LFSR)
-        end else if (valid_in) begin
+        end else if (vld_in) begin
             lfsr <= {lfsr[14:0], lfsr_fb}; // Dịch trái và nạp feedback
         end
     end
@@ -76,11 +76,11 @@ module err_inject
     always_comb begin
         case (mode_sw)
             3'b000: random_inject = 1'b0;
-            3'b001: random_inject = ({lfsr[15], lfsr[13], lfsr[7], lfsr[4], lfsr[1], lfsr[0]} == 6'b0);       // Xác suất 1/256
-            3'b010: random_inject = ({lfsr[14], lfsr[11], lfsr[6], lfsr[4], lfsr[1], lfsr[0]} == 6'b0);      // Xác suất 1/128
-            3'b011: random_inject = ({lfsr[15], lfsr[11], lfsr[4], lfsr[2], lfsr[0]} == 5'b0);                   // Xác suất 1/64
-            3'b100: random_inject = ({lfsr[14], lfsr[9], lfsr[5], lfsr[1], lfsr[0]} == 5'b0);                   // Xác suất 1/32
-            3'b101: random_inject = ({lfsr[15], lfsr[8], lfsr[0]} == 3'b0);                                  // Xác suất 1/8  
+            3'b001: random_inject = ({lfsr[15], lfsr[13], lfsr[7], lfsr[4], lfsr[1], lfsr[0]} == 6'b0);     // Xác suất 1/64
+            3'b010: random_inject = ({lfsr[14], lfsr[11], lfsr[6], lfsr[4], lfsr[1], lfsr[0]} == 6'b0);     // Xác suất 1/64
+            3'b011: random_inject = ({lfsr[15], lfsr[11], lfsr[4], lfsr[2], lfsr[0]} == 5'b0);              // Xác suất 1/32
+            3'b100: random_inject = ({lfsr[14], lfsr[9], lfsr[5], lfsr[1], lfsr[0]} == 5'b0);               // Xác suất 1/32
+            3'b101: random_inject = ({lfsr[15], lfsr[8], lfsr[0]} == 3'b0);                                 // Xác suất 1/8  
             default: random_inject = 1'b1;                                                                  // Chèn toàn bộ
         endcase
     end
@@ -102,7 +102,7 @@ module err_inject
     assign burst_active = is_burst_mode && (current_inj_cnt > 0) && (current_inj_cnt < target_err);
 
     // Mạch quyết định chèn lỗi cuối cùng (OR của 3 điều kiện)
-    assign inject_en = valid_in && (current_inj_cnt < target_err) && 
+    assign inject_en = vld_in && (current_inj_cnt < target_err) && 
                        (random_inject || force_inject || burst_active);
 
     // =========================================================
@@ -121,7 +121,7 @@ module err_inject
         if (~rst_n) begin
             symbol_cnt <= '0;
             injected_count <= '0;
-        end else if (valid_in) begin
+        end else if (vld_in) begin
             if (sop_in) begin
                 symbol_cnt <= 10'd1;
                 if (inject_en) begin 
@@ -144,11 +144,11 @@ module err_inject
 
     // Giao tiếp luồng dữ liệu
     assign sop_out   = sop_in;
-    assign valid_out = valid_in;
-    assign data_out  = data_in ^ noise; // Cộng GF(2) là XOR
+    assign vld_out = vld_in;
+    assign dat_out  = dat_in ^ noise; // Cộng GF(2) là XOR
     
     // Giao tiếp RAM cho Wrapper
     assign read_inj_pos = pos_mem[read_addr];
     assign read_inj_mag = mag_mem[read_addr];
 
-endmodule:err_inject
+endmodule: err_inject

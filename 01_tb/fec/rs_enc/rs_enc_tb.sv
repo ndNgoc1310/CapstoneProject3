@@ -22,15 +22,15 @@ module rs_enc_tb;
 
     // DUT Inputs
     logic             sop_in;
-    logic             valid_in;
-    logic [WIDTH-1:0] data_in;
+    logic             vld_in;
+    logic [WIDTH-1:0] dat_in;
 
     // DUT Outputs
     logic             sop_out;
-    logic             valid_out;
-    logic [WIDTH-1:0] data_out;
-    logic             ready;
-    logic             error;
+    logic             vld_out;
+    logic [WIDTH-1:0] dat_out;
+    logic             sys_rdy;
+    logic             sys_err;
 
     // File descriptors & Verification variables
     int in_fd, exp_fd, log_fd;
@@ -54,13 +54,13 @@ module rs_enc_tb;
         .clk        (clk),
         .rst_n      (rst_n),
         .sop_in     (sop_in),
-        .valid_in   (valid_in),
-        .data_in    (data_in),
+        .vld_in   (vld_in),
+        .dat_in    (dat_in),
         .sop_out    (sop_out),
-        .valid_out  (valid_out),
-        .data_out   (data_out),
-        .ready      (ready),
-        .error      (error)
+        .vld_out  (vld_out),
+        .dat_out   (dat_out),
+        .sys_rdy      (sys_rdy),
+        .sys_err      (sys_err)
     );
 
     // ---------------------------------------------------------
@@ -101,8 +101,8 @@ module rs_enc_tb;
     initial begin
         // Khởi tạo tín hiệu mặc định
         sop_in   = 1'b0;
-        valid_in = 1'b0;
-        data_in  = '0;
+        vld_in = 1'b0;
+        dat_in  = '0;
 
         // Mở file Test Vectors và Log
         in_fd  = $fopen("rs_dec_enc_in.hex", "r");
@@ -142,7 +142,7 @@ module rs_enc_tb;
             mismatch = 0;
 
             // Chờ module sẵn sàng nhận gói tin mới
-            wait(ready == 1'b1);
+            wait(sys_rdy == 1'b1);
             @(posedge clk);
 
             // =========================================================
@@ -154,15 +154,15 @@ module rs_enc_tb;
                 // -----------------------------------------------------
                 begin
                     for (int c = 0; c < MSG_LEN; c++) begin
-                        valid_in <= 1'b1;
-                        data_in  <= in_array[c];
+                        vld_in <= 1'b1;
+                        dat_in  <= in_array[c];
                         sop_in   <= (c == 0) ? 1'b1 : 1'b0;
                         @(posedge clk);
                     end
                     // Kết thúc bơm 514 nhịp
-                    valid_in <= 1'b0;
+                    vld_in <= 1'b0;
                     sop_in   <= 1'b0;
-                    data_in  <= '0;
+                    dat_in  <= '0;
                 end
 
                 // -----------------------------------------------------
@@ -171,25 +171,25 @@ module rs_enc_tb;
                 begin
                     for (int c = 0; c < CW_LEN; c++) begin
                         // Đợi cờ báo hiệu data ra hoặc cờ báo lỗi
-                        wait(valid_out == 1'b1 || error == 1'b1);
+                        wait(vld_out == 1'b1 || sys_err == 1'b1);
 
-                        if (error == 1'b1) begin
+                        if (sys_err == 1'b1) begin
                             mismatch = 1;
-                            $display("[%0t]   \033[1;31m[FSM ERROR]\033[0m DUT asserted error flag at cycle %0d", $time, c);
-                            $fdisplay(log_fd, "[%0t]   [FSM ERROR] DUT asserted error flag at cycle %0d", $time, c);
+                            $display("[%0t]   \033[1;31m[FSM ERROR]\033[0m DUT asserted sys_err flag at cycle %0d", $time, c);
+                            $fdisplay(log_fd, "[%0t]   [FSM ERROR] DUT asserted sys_err flag at cycle %0d", $time, c);
                             break; // Thoát vòng lặp checker ngay lập tức
                         end
 
-                        if (valid_out == 1'b1) begin
+                        if (vld_out == 1'b1) begin
                             #1; // Delay nhẹ để tín hiệu Data và SOP tổ hợp ổn định
                             
                             // Check Data
-                            if (data_out !== exp_array[c]) begin
+                            if (dat_out !== exp_array[c]) begin
                                 mismatch = 1;
                                 $display("  \033[1;31m[MISMATCH]\033[0m Cycle %0d | Exp Data = %x, Act Data = %x", 
-                                         c, exp_array[c], data_out);
+                                         c, exp_array[c], dat_out);
                                 $fdisplay(log_fd, "  [MISMATCH] Cycle %0d | Exp Data = %x, Act Data = %x", 
-                                         c, exp_array[c], data_out);
+                                         c, exp_array[c], dat_out);
                             end
                             
                             // Check SOP Out
@@ -222,8 +222,8 @@ module rs_enc_tb;
             end
 
             // Nếu FSM dính lỗi, cần chờ nó tự động xả và reset về state READY
-            if (error == 1'b1) begin
-                wait(ready == 1'b1);
+            if (sys_err == 1'b1) begin
+                wait(sys_rdy == 1'b1);
                 @(posedge clk);
             end
         end
@@ -254,4 +254,4 @@ module rs_enc_tb;
         $finish;
     end
 
-endmodule:rs_enc_tb
+endmodule: rs_enc_tb

@@ -22,15 +22,15 @@ module rs_dec_tb;
 
     // DUT Inputs
     logic             sop_in;
-    logic             valid_in;
-    logic [WIDTH-1:0] data_in;
+    logic             vld_in;
+    logic [WIDTH-1:0] dat_in;
 
     // DUT Outputs
     logic             sop_out;
-    logic             valid_out;
-    logic [WIDTH-1:0] data_out;
-    logic             ready;
-    logic             error;
+    logic             vld_out;
+    logic [WIDTH-1:0] dat_out;
+    logic             sys_rdy;
+    logic             sys_err;
 
     // Verification Variables
     int in_fd, exp_fd, log_fd;
@@ -56,13 +56,13 @@ module rs_dec_tb;
         .clk        (clk),
         .rst_n      (rst_n),
         .sop_in     (sop_in),
-        .valid_in   (valid_in),
-        .data_in    (data_in),
+        .vld_in   (vld_in),
+        .dat_in    (dat_in),
         .sop_out    (sop_out),
-        .valid_out  (valid_out),
-        .data_out   (data_out),
-        .ready      (ready),
-        .error      (error)
+        .vld_out  (vld_out),
+        .dat_out   (dat_out),
+        .sys_rdy      (sys_rdy),
+        .sys_err      (sys_err)
     );
 
     // ---------------------------------------------------------
@@ -99,8 +99,8 @@ module rs_dec_tb;
     initial begin
         // Initialize Inputs
         sop_in   = 1'b0;
-        valid_in = 1'b0;
-        data_in  = '0;
+        vld_in = 1'b0;
+        dat_in  = '0;
 
         // Open Hex and Log Files
         in_fd  = $fopen("rs_dec_in.hex", "r");
@@ -136,7 +136,7 @@ module rs_dec_tb;
             mismatch = 0;
 
             // Chờ DUT sẵn sàng nhận gói tin mới
-            wait(ready == 1'b1);
+            wait(sys_rdy == 1'b1);
             @(posedge clk);
 
             // =====================================================
@@ -146,40 +146,40 @@ module rs_dec_tb;
                 // THREAD 1: BƠM DỮ LIỆU (STIMULUS)
                 begin
                     for (int c = 0; c < K; c++) begin
-                        valid_in <= 1'b1;
-                        data_in  <= in_array[c];
+                        vld_in <= 1'b1;
+                        dat_in  <= in_array[c];
                         sop_in   <= (c == 0);
                         @(posedge clk);
                     end
-                    valid_in <= 1'b0;
+                    vld_in <= 1'b0;
                     sop_in   <= 1'b0;
-                    data_in  <= '0;
+                    dat_in  <= '0;
                 end
 
                 // THREAD 2: QUÁ TRÌNH CHỜ VÀ SO SÁNH (CHECKER)
                 begin
                     for (int c = 0; c < K; c++) begin
-                        // Đợi valid_out từ Pipeline xả ra hoặc cờ báo lỗi
-                        wait(valid_out == 1'b1 || error == 1'b1);
+                        // Đợi vld_out từ Pipeline xả ra hoặc cờ báo lỗi
+                        wait(vld_out == 1'b1 || sys_err == 1'b1);
 
-                        if (error == 1'b1) begin
+                        if (sys_err == 1'b1) begin
                             mismatch = 1;
                             $display("[%0t]   \033[1;31m[ERROR]\033[0m Testcase %0d: FSM Asserted Error Flag!", $time, test_idx);
                             $fdisplay(log_fd, "[%0t]   [ERROR] Testcase %0d: FSM Asserted Error Flag!", $time, test_idx);
                             break; 
                         end
 
-                        if (valid_out == 1'b1) begin
+                        if (vld_out == 1'b1) begin
                             #1; // Để tín hiệu tổ hợp ổn định
 
                             // Kiểm tra dữ liệu
                             // Đảo chiều index để khớp với dữ liệu xuất ngược từ LIFO (c_0 -> c_543)
-                            if (data_out !== exp_array[K - 1 - c]) begin
+                            if (dat_out !== exp_array[K - 1 - c]) begin
                                 mismatch = 1;
                                 $display("[%0t]   \033[1;31m[DATA MISMATCH]\033[0m Case %0d | Symbol %0d | Exp: %x, Act: %x", 
-                                    $time, test_idx, K - 1 - c, exp_array[K - 1 - c], data_out);
+                                    $time, test_idx, K - 1 - c, exp_array[K - 1 - c], dat_out);
                                 $fdisplay(log_fd, "[%0t]   [DATA MISMATCH] Case %0d | Symbol %0d | Exp: %x, Act: %x", 
-                                    $time, test_idx, K - 1 - c, exp_array[K - 1 - c], data_out);
+                                    $time, test_idx, K - 1 - c, exp_array[K - 1 - c], dat_out);
                             end
 
                             // Kiểm tra tín hiệu SOP
@@ -208,8 +208,8 @@ module rs_dec_tb;
             end
 
             // Phục hồi FSM nếu có lỗi trước khi qua testcase mới
-            if (error == 1'b1) begin
-                wait(ready == 1'b1);
+            if (sys_err == 1'b1) begin
+                wait(sys_rdy == 1'b1);
                 @(posedge clk);
             end
         end

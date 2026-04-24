@@ -42,7 +42,7 @@ module err_inject
     // Đa thức LFSR cực đại: x^16 + x^14 + x^13 + x^11 + 1
     // =========================================================
     logic [15:0] lfsr;
-    wire lfsr_fb = lfsr[6] ^ lfsr[7] ^ lfsr[8] ^ lfsr[9];
+    wire lfsr_fb = lfsr[15] ^ lfsr[13] ^ lfsr[12] ^ lfsr[10];
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
@@ -76,12 +76,12 @@ module err_inject
     always_comb begin
         case (mode_sw)
             3'b000: random_inject = 1'b0;
-            3'b001: random_inject = ({lfsr[4], lfsr[2], lfsr[5], lfsr[6], lfsr[1], lfsr[0]} == 6'b0); // Xác suất 1/128 (~ 4 lỗi rải rác)
-            3'b010: random_inject = (lfsr[7:0] == 8'b0); // Xác suất 1/256
-            3'b011: random_inject = ({lfsr[2], lfsr[5], lfsr[6], lfsr[1], lfsr[0]} == 5'b0); // Xác suất 1/64  (~ 8.5 lỗi rải rác)
-            3'b100: random_inject = ({lfsr[2], lfsr[5], lfsr[6], lfsr[1], lfsr[0]} == 5'b0); // Xác suất 1/64
-            3'b101: random_inject = ({lfsr[6], lfsr[1], lfsr[0]} == 3'b0); // Xác suất 1/8   (~ 68 lỗi rải rác)
-            default: random_inject = 1'b1;               // Chèn toàn bộ
+            3'b001: random_inject = ({lfsr[10], lfsr[8], lfsr[6], lfsr[4], lfsr[2], lfsr[0]} == 6'b0);       // Xác suất 1/64
+            3'b010: random_inject = ({lfsr[11], lfsr[9], lfsr[7], lfsr[5], lfsr[3], lfsr[1]} == 6'b0);  // Xác suất 1/64
+            3'b011: random_inject = ({lfsr[8], lfsr[6], lfsr[4], lfsr[2], lfsr[0]} == 5'b0);                   // Xác suất 1/32
+            3'b100: random_inject = ({lfsr[8], lfsr[6], lfsr[4], lfsr[2], lfsr[0]} == 5'b0);                   // Xác suất 1/32
+            3'b101: random_inject = ({lfsr[4], lfsr[2], lfsr[0]} == 3'b0);                                  // Xác suất 1/8  
+            default: random_inject = 1'b1;                                                                  // Chèn toàn bộ
         endcase
     end
 

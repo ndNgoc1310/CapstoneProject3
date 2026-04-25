@@ -480,11 +480,11 @@ set_location_assignment PIN_C22 -to HPS_LCM_SPIM_MOSI
 set_location_assignment PIN_H20 -to HPS_LCM_SPIM_SS
 set_global_assignment -name VERILOG_INPUT_VERSION SYSTEMVERILOG_2005
 set_global_assignment -name VERILOG_SHOW_LMF_MAPPING_MESSAGES OFF
+set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/top/err_inj.sv
 set_global_assignment -name SDC_FILE wrapper.sdc
 set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/top/wrapper.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/top/top.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/top/led_7s_enc.sv
-set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/top/err_inject.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/fec/common/gf_mul_const_g.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/fec/common/gf_mul_const_alpha_inv.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/fec/common/gf_mul_const_alpha.sv

@@ -7,12 +7,12 @@ module msg_pumper
     parameter K = 514
 )
 (
-    input  logic clk,
-    input  logic rst_n,
-    input  logic start_test,
-    input  logic enc_rdy,    
+    input  logic        clk,
+    input  logic        rst_n,
+    input  logic        start_test,
+    input  logic        enc_rdy,    
     
-    output logic    enc_sop_in,
+    output logic        enc_sop_in,
     output logic        enc_vld_in,
     output logic [9:0]  enc_dat_in
 );
@@ -21,15 +21,15 @@ module msg_pumper
     logic           tick_10ms;
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
-            tick_cnt <= 0;
-            tick_10ms <= 0;
+            tick_cnt    <= 0;
+            tick_10ms   <= 0;
         end else begin
             if (tick_cnt == 19'd500_000) begin
-                tick_cnt <= 0;
-                tick_10ms <= 1'b1;
+                tick_cnt    <= 0;
+                tick_10ms   <= 1'b1;
             end else begin
-                tick_cnt <= tick_cnt + 1;
-                tick_10ms <= 1'b0;
+                tick_cnt    <= tick_cnt + 19'd1;
+                tick_10ms   <= 1'b0;
             end
         end
     end
@@ -39,7 +39,7 @@ module msg_pumper
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
             start_debounced <= 1'b0;
-            start_d <= 1'b0;
+            start_d         <= 1'b0;
         end else begin
             if (tick_10ms) start_debounced <= start_test;
             start_d <= start_debounced;
@@ -49,25 +49,25 @@ module msg_pumper
 
     logic [9:0] msg_cnt;
     typedef enum logic [1:0] {GEN_IDLE, GEN_PUMP} gen_state_t;
-    gen_state_t gen_state, gen_next;
+    gen_state_t gen_state, gen_nxt;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) gen_state <= GEN_IDLE;
-        else        gen_state <= gen_next;
+        else        gen_state <= gen_nxt;
     end
 
     always_comb begin
         case (gen_state)
             GEN_IDLE: begin
                 // Chỉ bơm khi có xung nút bấm VÀ Encoder đang Ready
-                if (start_pulse && enc_rdy) gen_next = GEN_PUMP;
-                else                        gen_next = GEN_IDLE;
+                if (start_pulse && enc_rdy) gen_nxt = GEN_PUMP;
+                else                        gen_nxt = GEN_IDLE;
             end
             GEN_PUMP: begin
-                if (msg_cnt == 10'(K - 1)) gen_next = GEN_IDLE;
-                else                       gen_next = GEN_PUMP;
+                if (msg_cnt == 10'(K - 1)) gen_nxt = GEN_IDLE;
+                else                       gen_nxt = GEN_PUMP;
             end
-            default: gen_next = GEN_IDLE;
+            default: gen_nxt = GEN_IDLE;
         endcase
     end
 
@@ -115,49 +115,49 @@ module dec_err_track_ram (
     input  logic        dec_sop_out,
     input  logic        dec_err_flg,
     input  logic [9:0]  dec_err_mag,
-    input  logic [9:0]  read_addr,
+    input  logic [9:0]  rd_addr,
     
-    output logic [9:0]  corrected_count,
-    output logic [9:0]  read_pos,
-    output logic [9:0]  read_mag
+    output logic [9:0]  corr_cnt,
+    output logic [9:0]  rd_pos,
+    output logic [9:0]  rd_mag
 );
-    logic [9:0] dec_symbol_cnt;
+    logic [9:0] dec_sym_cnt;
     logic [9:0] dec_pos_mem [0:543];
     logic [9:0] dec_mag_mem [0:543];
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
-            dec_symbol_cnt  <= '0;
-            corrected_count <= '0;
+            dec_sym_cnt     <= '0;
+            corr_cnt <= '0;
         end else if (dec_vld_out) begin 
             if (dec_sop_out) begin
-                dec_symbol_cnt <= 10'd1;
+                dec_sym_cnt <= 10'd1;
                 if (dec_err_flg) begin
                     // FIX: LIFO xuất symbol 543 đầu tiên
                     dec_pos_mem[0]  <= 10'd543; 
                     dec_mag_mem[0]  <= dec_err_mag;
-                    corrected_count <= 10'd1;
+                    corr_cnt <= 10'd1;
                 end else begin
-                    corrected_count <= 10'd0;
+                    corr_cnt <= 10'd0;
                 end
             end else begin
-                dec_symbol_cnt <= dec_symbol_cnt + 10'd1;
+                dec_sym_cnt <= dec_sym_cnt + 10'd1;
                 if (dec_err_flg) begin
                     // FIX: Quy đổi toạ độ ngược của LIFO về toạ độ gốc của gói tin
-                    dec_pos_mem[corrected_count]    <= 10'd543 - dec_symbol_cnt;
-                    dec_mag_mem[corrected_count]    <= dec_err_mag;
-                    corrected_count                 <= corrected_count + 10'd1;
+                    dec_pos_mem[corr_cnt]    <= 10'd543 - dec_sym_cnt;
+                    dec_mag_mem[corr_cnt]    <= dec_err_mag;
+                    corr_cnt                 <= corr_cnt + 10'd1;
                 end
             end
         end
     end
 
     // FIX: Đảo ngược Index đọc mảng để Error đầu tiên vào trùng với Error đầu tiên ra
-    logic [9:0] rev_read_addr;
-    assign rev_read_addr = (corrected_count > 0) ? (corrected_count - 10'd1 - read_addr) : 10'd0;
+    logic [9:0] rev_rd_addr;
+    assign rev_rd_addr = (corr_cnt > 0) ? (corr_cnt - 10'd1 - rd_addr) : 10'd0;
 
-    assign read_pos = dec_pos_mem[rev_read_addr];
-    assign read_mag = dec_mag_mem[rev_read_addr];
+    assign rd_pos = dec_pos_mem[rev_rd_addr];
+    assign rd_mag = dec_mag_mem[rev_rd_addr];
 
 endmodule: dec_err_track_ram
 
@@ -169,9 +169,9 @@ module disp_key_ctrl (
     input  logic        clk,
     input  logic        rst_n,
     input  logic [1:0]  disp_mode,
-    input  logic [9:0]  injected_count,
-    input  logic        key_next,
-    input  logic        key_prev,
+    input  logic [9:0]  inj_cnt,
+    input  logic        key_nxt,
+    input  logic        key_prv,
     
     output logic [9:0]  disp_idx
 );
@@ -180,60 +180,60 @@ module disp_key_ctrl (
     logic tick_10ms;
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
-            tick_cnt <= 0;
-            tick_10ms <= 0;
+            tick_cnt    <= 0;
+            tick_10ms   <= 0;
         end else begin
             if (tick_cnt == 19'd500_000) begin
                 tick_cnt    <= 0;
                 tick_10ms   <= 1'b1;
             end else begin
-                tick_cnt    <= tick_cnt + 1;
+                tick_cnt    <= tick_cnt + 19'd1;
                 tick_10ms   <= 1'b0;
             end
         end
     end
 
     // --- Lấy mẫu nút bấm sau mỗi 10ms để triệt nhiễu cơ học ---
-    logic key_next_debounced, key_prev_debounced;
-    logic key_next_d, key_prev_d;
+    logic key_nxt_debounced, key_prv_debounced;
+    logic key_nxt_d, key_prv_d;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
-            key_next_debounced <= 1'b1;
-            key_prev_debounced <= 1'b1;
+            key_nxt_debounced <= 1'b1;
+            key_prv_debounced <= 1'b1;
         end else if (tick_10ms) begin
-            key_next_debounced <= key_next;
-            key_prev_debounced <= key_prev;
+            key_nxt_debounced <= key_nxt;
+            key_prv_debounced <= key_prv;
         end
     end
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
-            key_next_d <= 1'b1;
-            key_prev_d <= 1'b1;
+            key_nxt_d <= 1'b1;
+            key_prv_d <= 1'b1;
         end else begin
-            key_next_d <= key_next_debounced;
-            key_prev_d <= key_prev_debounced;
+            key_nxt_d <= key_nxt_debounced;
+            key_prv_d <= key_prv_debounced;
         end
     end
 
     // Tạo xung 1 nhịp clock duy nhất khi phát hiện sườn xuống (Bấm nút)
-    wire next_pressed = ~key_next_debounced & key_next_d;
-    wire prev_pressed = ~key_prev_debounced & key_prev_d;
+    wire next_pressed = ~key_nxt_debounced & key_nxt_d;
+    wire prev_pressed = ~key_prv_debounced & key_prv_d;
 
     // Logic điều hướng (Navigation)
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin
             disp_idx <= 10'd0;
         end else begin
-            if (disp_mode != 2'b00 && injected_count > 0) begin
+            if (disp_mode != 2'b00 && inj_cnt > 0) begin
                 if (next_pressed) begin
-                    if (disp_idx < injected_count - 10'd1) disp_idx <= disp_idx + 10'd1;
+                    if (disp_idx < inj_cnt - 10'd1) disp_idx <= disp_idx + 10'd1;
                     else disp_idx <= 10'd0;
                 end 
                 else if (prev_pressed) begin
                     if (disp_idx > 0) disp_idx <= disp_idx - 10'd1;
-                    else disp_idx <= injected_count - 10'd1;
+                    else disp_idx <= inj_cnt - 10'd1;
                 end
             end else begin
                 disp_idx <= 10'd0;
@@ -248,12 +248,12 @@ endmodule: disp_key_ctrl
 // =========================================================
 module hex_mux (
     input  logic [1:0] disp_mode,
-    input  logic [9:0] injected_count,
-    input  logic [9:0] corrected_count,
-    input  logic [9:0] read_inj_pos,
-    input  logic [9:0] read_inj_mag,
-    input  logic [9:0] read_dec_pos,
-    input  logic [9:0] read_dec_mag,
+    input  logic [9:0] inj_cnt,
+    input  logic [9:0] corr_cnt,
+    input  logic [9:0] rd_inj_pos,
+    input  logic [9:0] rd_inj_mag,
+    input  logic [9:0] rd_dec_pos,
+    input  logic [9:0] rd_dec_mag,
     
     output logic [6:0] hex0, hex1, hex2, hex3, hex4, hex5
 );
@@ -262,16 +262,16 @@ module hex_mux (
     always_comb begin
         case (disp_mode)
             2'b00: begin // Mode 0: SỐ LƯỢNG (Count)
-                hex_left_val  = injected_count;
-                hex_right_val = corrected_count;
+                hex_left_val  = inj_cnt;
+                hex_right_val = corr_cnt;
             end
             2'b01: begin // Mode 1: VỊ TRÍ (Position)
-                hex_left_val  = (injected_count > 0) ? read_inj_pos : 10'd0;
-                hex_right_val = (corrected_count > 0) ? read_dec_pos : 10'd0;
+                hex_left_val  = (inj_cnt > 0) ? rd_inj_pos : 10'd0;
+                hex_right_val = (corr_cnt > 0) ? rd_dec_pos : 10'd0;
             end
             2'b10: begin // Mode 2: ĐỘ LỚN (Magnitude)
-                hex_left_val  = (injected_count > 0) ? read_inj_mag : 10'd0;
-                hex_right_val = (corrected_count > 0) ? read_dec_mag : 10'd0;
+                hex_left_val  = (inj_cnt > 0) ? rd_inj_mag : 10'd0;
+                hex_right_val = (corr_cnt > 0) ? rd_dec_mag : 10'd0;
             end
             default: begin
                 hex_left_val  = '0;
@@ -329,10 +329,10 @@ module wrapper
     logic [9:0] dec_err_mag;
     logic [9:0] dec_dat_out;
     
-    logic [9:0] injected_count;
-    logic [9:0] corrected_count;
-    logic [9:0] read_inj_pos, read_inj_mag;
-    logic [9:0] read_dec_pos, read_dec_mag;
+    logic [9:0] inj_cnt;
+    logic [9:0] corr_cnt;
+    logic [9:0] rd_inj_pos, rd_inj_mag;
+    logic [9:0] rd_dec_pos, rd_dec_mag;
     logic [9:0] disp_idx;
     
     logic [1:0] disp_mode;
@@ -376,7 +376,7 @@ module wrapper
     );
 
     // 3.3. Error Injector (Khối chèn lỗi)
-    err_inject #(.WIDTH(10)) INJECTOR (
+    err_inj #(.WIDTH(10)) INJECTOR (
         .clk            (clk),
         .rst_n          (rst_n),
         .mode_sw        (SW[2:0]), 
@@ -386,10 +386,10 @@ module wrapper
         .sop_out        (dec_sop_in),
         .vld_out        (dec_vld_in),
         .dat_out        (dec_dat_in),
-        .injected_count (injected_count),
-        .read_addr      (disp_idx),
-        .read_inj_pos   (read_inj_pos),
-        .read_inj_mag   (read_inj_mag)
+        .inj_cnt        (inj_cnt),
+        .rd_addr        (disp_idx),
+        .rd_inj_pos     (rd_inj_pos),
+        .rd_inj_mag     (rd_inj_mag)
     );
 
     // 3.4. Decoder Error Tracking RAM (Lưu lịch sử sửa lỗi)
@@ -400,10 +400,10 @@ module wrapper
         .dec_sop_out        (dec_sop_out),
         .dec_err_flg        (dec_err_flg),
         .dec_err_mag        (dec_err_mag),
-        .read_addr          (disp_idx),
-        .corrected_count    (corrected_count),
-        .read_pos           (read_dec_pos),
-        .read_mag           (read_dec_mag)
+        .rd_addr            (disp_idx),
+        .corr_cnt           (corr_cnt),
+        .rd_pos             (rd_dec_pos),
+        .rd_mag             (rd_dec_mag)
     );
 
     // 3.5. Hiển thị & Điều khiển KEY
@@ -411,27 +411,27 @@ module wrapper
         .clk            (clk),
         .rst_n          (rst_n),
         .disp_mode      (disp_mode),
-        .injected_count (injected_count),
-        .key_next       (KEY[2]),
-        .key_prev       (KEY[3]),
+        .inj_cnt        (inj_cnt),
+        .key_nxt        (KEY[2]),
+        .key_prv        (KEY[3]),
         .disp_idx       (disp_idx)
     );
 
     // 3.6. Hex Multiplexing (Trích xuất ra 6 LED 7 đoạn)
     hex_mux HEX_DISP (
-        .disp_mode       (disp_mode),
-        .injected_count  (injected_count),
-        .corrected_count (corrected_count),
-        .read_inj_pos    (read_inj_pos),
-        .read_inj_mag    (read_inj_mag),
-        .read_dec_pos    (read_dec_pos),
-        .read_dec_mag    (read_dec_mag),
-        .hex0            (HEX0),
-        .hex1            (HEX1),
-        .hex2            (HEX2),
-        .hex3            (HEX3),
-        .hex4            (HEX4),
-        .hex5            (HEX5)
+        .disp_mode      (disp_mode),
+        .inj_cnt        (inj_cnt),
+        .corr_cnt       (corr_cnt),
+        .rd_inj_pos     (rd_inj_pos),
+        .rd_inj_mag     (rd_inj_mag),
+        .rd_dec_pos     (rd_dec_pos),
+        .rd_dec_mag     (rd_dec_mag),
+        .hex0           (HEX0),
+        .hex1           (HEX1),
+        .hex2           (HEX2),
+        .hex3           (HEX3),
+        .hex4           (HEX4),
+        .hex5           (HEX5)
     );
 
     // --- 4. LEDR STATUS MAPPING ---
@@ -441,7 +441,7 @@ module wrapper
     assign LEDR[7:4] = 'b0;
     
     assign LEDR[3] = dec_err; // Cờ Uncorrectable Error
-    assign LEDR[2] = dec_vld_out & ~dec_err & (injected_count == corrected_count); // Cờ PASS
+    assign LEDR[2] = dec_vld_out & ~dec_err & (inj_cnt == corr_cnt); // Cờ PASS
     assign LEDR[1] = dec_rdy; // Decoder sẵn sàng
     assign LEDR[0] = enc_rdy; // Encoder sẵn sàng
 

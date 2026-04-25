@@ -30,6 +30,7 @@ module rs_dec
     logic               kes_to_chien_valid;
     logic [WIDTH-1:0]   kes_to_chien_lam [ORDER:0];
     logic [WIDTH-1:0]   kes_to_chien_ome [ORDER:0];
+    logic [4:0]         kes_to_chien_len;
 
     logic               chien_sop_out;
     logic               chien_vld_out;
@@ -75,6 +76,8 @@ module rs_dec
         .lam_out    (kes_to_chien_lam),
         .ome_out    (kes_to_chien_ome),
 
+        .len_out    (kes_to_chien_len),
+
         .sys_rdy    (kes_rdy),
         .sys_err    (kes_err)
     );
@@ -85,6 +88,8 @@ module rs_dec
         .vld_in     (kes_to_chien_valid),
         .lam_in     (kes_to_chien_lam),
         .ome_in     (kes_to_chien_ome),
+
+        .len_in     (kes_to_chien_len),
 
         .sop_out    (chien_sop_out),
         .vld_out    (chien_vld_out),

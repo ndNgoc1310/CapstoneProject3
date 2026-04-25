@@ -109,7 +109,8 @@ module err_inj
     // =========================================================
     logic [WIDTH-1:0] rand_mag;
     // Lấy 10 bit từ LFSR. Nếu vô tình rơi vào 0 (không tạo ra lỗi), ép thành 1.
-    assign rand_mag = (lfsr[9:0] == 10'd0) ? 10'd1 : lfsr[9:0];
+    assign rand_mag = (lfsr[9:0] == 10'd0) ? 10'd1 : 
+                      (lfsr[9:0] > 10'd999) ?  10'd999 : lfsr[9:0];
 
     assign noise = inj_en ? rand_mag : 10'd0;
 

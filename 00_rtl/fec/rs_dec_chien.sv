@@ -10,6 +10,7 @@ module rs_dec_chien
     input logic             vld_in,
     input logic [WIDTH-1:0] lam_in [ORDER:0],
     input logic [WIDTH-1:0] ome_in [ORDER:0],
+    input logic [4:0]       len_in,
 
     output logic                err_flg,
     output logic [WIDTH-1:0]    l_val_der,
@@ -22,6 +23,7 @@ module rs_dec_chien
 
     // Internal signals
     logic cnt_end;
+    logic uncorr;
     logic init;
     logic reg_en;
     logic cnt_en;
@@ -54,8 +56,11 @@ module rs_dec_chien
         .rst_n      (rst_n),
         .init       (init),
         .cnt_en     (cnt_en),
+        .err_flg    (err_flg),
+        .len_in     (len_in),
 
-        .cnt_end    (cnt_end)
+        .cnt_end    (cnt_end),
+        .uncorr     (uncorr)
     );
 
     rs_dec_chien_ctrl CHIEN_CTRL (
@@ -63,6 +68,7 @@ module rs_dec_chien
         .rst_n      (rst_n),
         .vld_in     (vld_in),
         .cnt_end    (cnt_end),
+        .uncorr     (uncorr),
 
         .init       (init),
         .reg_en     (reg_en),
@@ -239,12 +245,15 @@ module rs_dec_chien_cnt
     ORDER = 15
 )
 (
-    input logic clk,
-    input logic rst_n,
-    input logic init,
-    input logic cnt_en,
+    input logic         clk,
+    input logic         rst_n,
+    input logic         init,
+    input logic         cnt_en,
+    input logic         err_flg,
+    input logic [4:0]   len_in,
 
-    output logic cnt_end    
+    output logic        cnt_end,
+    output logic        uncorr   
 );
 
     // Internal signals
@@ -279,6 +288,42 @@ module rs_dec_chien_cnt
     // --- 2.
     assign cnt_end = &{cnt_out[9], cnt_out[4:0]};
 
+    // --- 3.
+    logic [4:0] err_cnt_nxt;
+    logic [4:0] err_cnt_in;
+    logic [4:0] err_cnt_out;
+
+    // 1. Bộ cộng 5-bit (Tăng giá trị đếm lên 1)
+    add_sub_nb #(.WIDTH(5)) Err_Cnt_Add (
+        .a    (err_cnt_out),
+        .b    (5'd1),
+        .cin  (1'b0),
+        .sum  (err_cnt_nxt),
+        .cout ()
+    );
+
+    // 2. Bộ MUX (Reset về 0 khi có tín hiệu init)
+    and_nb #(.WIDTH(5)) Err_Cnt_Mux (
+        .a  (err_cnt_nxt),
+        .b  ({5{~init}}),
+        .y  (err_cnt_in)
+    );
+
+    // 3. D Flip-Flop (Chỉ nạp khi init=1 HOẶC (đang chạy và phát hiện lỗi))
+    flop_r_nb #(.WIDTH(5)) Err_Cnt_Reg (
+        .clk    (clk),
+        .rst_n  (rst_n),
+        .en     (init | (reg_en & err_flg)), 
+        .d      (err_cnt_in),
+        .q      (err_cnt_out)
+    );
+
+    // 4. Logic phát hiện lỗi không thể sửa (Uncorrectable Error)
+    // Cờ này nảy lên 1 khi: 
+    // - Đang đếm mà số nghiệm đã VƯỢT QUÁ len_in (Early Termination)
+    // - Hoặc khi chạy XONG gói tin (cnt_end=1) mà số nghiệm KHÔNG BẰNG len_in
+    assign uncorr = (err_cnt_out > len_in) | (cnt_end & (err_cnt_out != len_in));    
+
 endmodule: rs_dec_chien_cnt
 
 // --------------------------------------------------------------
@@ -289,6 +334,7 @@ module rs_dec_chien_ctrl
     input logic rst_n,
     input logic vld_in,
     input logic cnt_end,
+    input logic uncorr,
 
     output logic init,
     output logic reg_en,
@@ -405,9 +451,9 @@ module rs_dec_chien_ctrl
                 end
 
                 CALC2: begin
-                    if (~vld_in & cnt_end)          state_nxt = DONE;
-                    else if (~vld_in & ~cnt_end)    state_nxt = CALC2;
-                    else                            state_nxt = ERROR;
+                    if (~vld_in & cnt_end & ~uncorr)        state_nxt = DONE;
+                    else if (~vld_in & ~cnt_end & ~uncorr)  state_nxt = CALC2;
+                    else                                    state_nxt = ERROR;
                 end
 
                 DONE: begin

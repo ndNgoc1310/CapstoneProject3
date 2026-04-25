@@ -13,11 +13,12 @@ module rs_dec_kes
     input logic             vld_in,
     input logic [WIDTH-1:0] syn_in [NSYM-1:0],
 
-    output logic                vld_out,
-    output logic                sys_rdy,
-    output logic                sys_err,
-    output logic [WIDTH-1:0]    lam_out [ORDER:0],
-    output logic [WIDTH-1:0]    ome_out [ORDER:0]
+    output logic                    vld_out,
+    output logic                    sys_rdy,
+    output logic                    sys_err,
+    output logic [WIDTH-1:0]        lam_out [ORDER:0],
+    output logic [WIDTH-1:0]        ome_out [ORDER:0],
+    output logic [CNT_WIDTH-1:0]    len_out
 );
 
     // Internal signals
@@ -92,6 +93,7 @@ module rs_dec_kes
         .cnt_en     (cnt_en),
         .dis_out    (dis_out),
 
+        .len_out    (len_out),
         .delta      (delta),
         .cnt_end    (cnt_end)
     );
@@ -374,8 +376,9 @@ module rs_dec_kes_br
     input logic             cnt_en,
     input logic [WIDTH-1:0] dis_out,
 
-    output logic            delta,
-    output logic            cnt_end
+    output logic [CNT_WIDTH-1:0]    len_out,
+    output logic                    delta,
+    output logic                    cnt_end
 );
     
     // --- Internal Signals ---
@@ -383,7 +386,6 @@ module rs_dec_kes_br
     logic [CNT_WIDTH-1:0]   cnt_in;
     logic [CNT_WIDTH-1:0]   cnt_out;
     logic [CNT_WIDTH-1:0]   len_in;
-    logic [CNT_WIDTH-1:0]   len_out;
     logic [CNT_WIDTH-1:0]   len_nxt;
     logic [CNT_WIDTH-1:0]   len_mux;
     logic                   len_ge;
@@ -406,10 +408,9 @@ module rs_dec_kes_br
         .y  (len_mux)
     );
 
-    mux_2_nb #(.WIDTH(CNT_WIDTH)) Len_Mux_2 (
-        .d0 (len_mux),
-        .d1 (CNT_WIDTH'('d0)), 
-        .s  (init),
+    and_nb #(.WIDTH(CNT_WIDTH)) Len_Mux_2 (
+        .a  (len_mux),
+        .b  ({(CNT_WIDTH){~init}}),
         .y  (len_in)
     );
 
@@ -428,14 +429,13 @@ module rs_dec_kes_br
         .cin    (1'b0),
         .sum    (cnt_nxt),
         .cout   ()                      
-    );
+    ); 
 
-    mux_2_nb #(.WIDTH(CNT_WIDTH)) Cnt_Mux (
-        .d0 (cnt_nxt),
-        .d1 (CNT_WIDTH'('d0)), 
-        .s  (init),
+    and_nb #(.WIDTH(CNT_WIDTH)) Cnt_Mux (
+        .a  (cnt_nxt),
+        .b  ({(CNT_WIDTH){~init}}),
         .y  (cnt_in)
-    );    
+    );
 
     flop_r_nb #(.WIDTH(CNT_WIDTH)) Cnt_Reg (
         .clk    (clk),

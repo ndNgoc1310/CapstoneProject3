@@ -435,7 +435,7 @@ module rs_dec_chien_ctrl
                 end
 
                 CALC2: begin
-                    if (~vld_in & cnt_end & uncorr)         state_nxt = DONE;
+                    if (~vld_in & cnt_end & ~uncorr)        state_nxt = DONE;
                     else if (~vld_in & ~cnt_end & ~uncorr)  state_nxt = CALC2;
                     else                                    state_nxt = ERROR;
                 end

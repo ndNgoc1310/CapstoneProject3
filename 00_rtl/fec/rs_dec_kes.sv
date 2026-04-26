@@ -454,7 +454,7 @@ module rs_dec_kes_br
         .cout   (len_ge)                      
     );
     assign len_lte = ~len_ge; // len_lte = 1 khi cnt_out <= len_out
-    assign cnt_end = cnt_out[4] & cnt_out[3] & cnt_out[2] & cnt_out[0];
+    assign cnt_end = cnt_out[4] & cnt_out[3] & cnt_out[2]; // Đếm tới 28
     assign dis_neq_0 = |dis_out;
     assign delta = dis_neq_0 & len_lte;
 
@@ -512,11 +512,11 @@ module rs_dec_kes_ctrl
                 sys_err = 1'b0; 
             end
 
-            DONE: begin
+            DONE: begin 
                 init    = 1'b0;
-                reg_en  = 1'b0;
-                len_en  = 1'b0;
-                cnt_en  = 1'b0;
+                reg_en  = 1'b1;
+                len_en  = 1'b1;
+                cnt_en  = 1'b1;
                 vld_out = 1'b1; 
                 sys_rdy = 1'b1;  
                 sys_err = 1'b0; 

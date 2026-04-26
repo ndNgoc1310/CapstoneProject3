@@ -56,13 +56,13 @@ module rs_dec_tb;
         .clk        (clk),
         .rst_n      (rst_n),
         .sop_in     (sop_in),
-        .vld_in   (vld_in),
-        .dat_in    (dat_in),
+        .vld_in     (vld_in),
+        .dat_in     (dat_in),
         .sop_out    (sop_out),
-        .vld_out  (vld_out),
-        .dat_out   (dat_out),
-        .sys_rdy      (sys_rdy),
-        .sys_err      (sys_err)
+        .vld_out    (vld_out),
+        .dat_out    (dat_out),
+        .sys_rdy    (sys_rdy),
+        .sys_err    (sys_err)
     );
 
     // ---------------------------------------------------------

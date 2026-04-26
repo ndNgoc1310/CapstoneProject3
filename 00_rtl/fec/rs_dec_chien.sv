@@ -55,7 +55,6 @@ module rs_dec_chien
         .clk        (clk),
         .rst_n      (rst_n),
         .init       (init),
-        .reg_en     (reg_en),
         .cnt_en     (cnt_en),
         .err_flg    (err_flg),
         .len_in     (len_in),
@@ -249,7 +248,6 @@ module rs_dec_chien_cnt
     input logic         clk,
     input logic         rst_n,
     input logic         init,
-    input logic         reg_en,
     input logic         cnt_en,
     input logic         err_flg,
     input logic [4:0]   len_in,
@@ -288,7 +286,7 @@ module rs_dec_chien_cnt
     );
 
     // --- 2.
-    assign cnt_end = &{cnt_out[9], cnt_out[4:0]};
+    assign cnt_end = &{cnt_out[9], cnt_out[4:0]}; // Đếm tới 543 rồi chuyển sang state DONE thực hiện chu kỳ cuối cùng, do state INIT (ảo) làm trễ 1 chu kỳ
 
     // --- 3.
     logic [4:0] err_cnt_nxt;
@@ -315,7 +313,7 @@ module rs_dec_chien_cnt
     flop_r_nb #(.WIDTH(5)) Err_Cnt_Reg (
         .clk    (clk),
         .rst_n  (rst_n),
-        .en     (init | (reg_en & err_flg)), 
+        .en     (init | err_flg), 
         .d      (err_cnt_in),
         .q      (err_cnt_out)
     );
@@ -350,7 +348,6 @@ module rs_dec_chien_ctrl
     // Định nghĩa các trạng thái của FSM
     typedef enum logic [2:0] {
         IDLE,   
-        INIT, 
         CALC1,  
         CALC2,   
         DONE,   
@@ -362,23 +359,13 @@ module rs_dec_chien_ctrl
     // --- 1. FSM State Output Logic ---
     always_comb begin
         case (state_cur)
-            IDLE: begin
-                init    = 1'b0;
-                reg_en  = 1'b0;
-                cnt_en  = 1'b0;
+            IDLE: begin // Mealy Action: Bắt tín hiệu và nạp data NGAY LẬP TỨC ở nhịp có vld_in
+                init    = vld_in ? 1'b1 : 1'b0;
+                reg_en  = vld_in ? 1'b1 : 1'b0;
+                cnt_en  = vld_in ? 1'b1 : 1'b0;
                 sop_out = 1'b0;
                 vld_out = 1'b0;
-                sys_rdy = 1'b1;  
-                sys_err = 1'b0; 
-            end
-
-            INIT: begin
-                init    = 1'b1;
-                reg_en  = 1'b1;
-                cnt_en  = 1'b1;
-                sop_out = 1'b0;
-                vld_out = 1'b0;
-                sys_rdy = 1'b0;  
+                sys_rdy = vld_in ? 1'b0 : 1'b1; 
                 sys_err = 1'b0; 
             end
 
@@ -404,31 +391,31 @@ module rs_dec_chien_ctrl
 
             DONE: begin
                 init    = 1'b0;
-                reg_en  = 1'b0;
-                cnt_en  = 1'b0;
+                reg_en  = 1'b1;
+                cnt_en  = 1'b1;
                 sop_out = 1'b0;
-                vld_out = 1'b0; 
+                vld_out = 1'b1; 
                 sys_rdy = 1'b1;  
                 sys_err = 1'b0; 
             end
 
             ERROR: begin
-                init    = 1'b0;
-                reg_en  = 1'b0;
-                cnt_en  = 1'b0;
+                init    = vld_in ? 1'b1 : 1'b0;
+                reg_en  = vld_in ? 1'b1 : 1'b0;
+                cnt_en  = vld_in ? 1'b1 : 1'b0;
                 sop_out = 1'b0;
-                vld_out = 1'b0; 
-                sys_rdy = 1'b1;  
-                sys_err = 1'b1; 
+                vld_out = 1'b0;
+                sys_rdy = vld_in ? 1'b0 : 1'b1; 
+                sys_err = 1'b1;  
             end
 
             default: begin
-                init    = 1'b0;
-                reg_en  = 1'b0;
-                cnt_en  = 1'b0;
+                init    = vld_in ? 1'b1 : 1'b0;
+                reg_en  = vld_in ? 1'b1 : 1'b0;
+                cnt_en  = vld_in ? 1'b1 : 1'b0;
                 sop_out = 1'b0;
-                vld_out = 1'b0; 
-                sys_rdy = 1'b1;  
+                vld_out = 1'b0;
+                sys_rdy = vld_in ? 1'b0 : 1'b1; 
                 sys_err = 1'b1; 
             end
         endcase
@@ -438,13 +425,8 @@ module rs_dec_chien_ctrl
     always_comb begin
         case (state_cur)
                 IDLE: begin
-                    if (vld_in) state_nxt = INIT;
+                    if (vld_in) state_nxt = CALC1;
                     else        state_nxt = IDLE;
-                end
-
-                INIT: begin
-                    if (~vld_in)    state_nxt = CALC1;
-                    else            state_nxt = ERROR;
                 end
 
                 CALC1: begin
@@ -453,18 +435,18 @@ module rs_dec_chien_ctrl
                 end
 
                 CALC2: begin
-                    if (~vld_in & cnt_end & ~uncorr)        state_nxt = DONE;
+                    if (~vld_in & cnt_end & uncorr)         state_nxt = DONE;
                     else if (~vld_in & ~cnt_end & ~uncorr)  state_nxt = CALC2;
                     else                                    state_nxt = ERROR;
                 end
 
                 DONE: begin
-                    if (vld_in) state_nxt = INIT;
-                    else        state_nxt = IDLE;
+                    if (~vld_in)    state_nxt = IDLE;
+                    else            state_nxt = ERROR;
                 end
 
                 ERROR: begin
-                    if (vld_in) state_nxt = INIT;
+                    if (vld_in) state_nxt = CALC1;
                     else        state_nxt = IDLE;
                 end
 

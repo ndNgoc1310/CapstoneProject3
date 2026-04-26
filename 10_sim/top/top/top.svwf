@@ -1,0 +1,171 @@
+
+#
+# Mnemonic Maps
+#
+mmap new  -reuse -name {Boolean as Logic} -radix %b -contents {{%c=FALSE -edgepriority 1 -shape low}
+{%c=TRUE -edgepriority 1 -shape high}}
+mmap new  -reuse -name {Example Map} -radix %x -contents {{%b=11???? -bgcolor orange -label REG:%x -linecolor yellow -shape bus}
+{%x=1F -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=2C -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=* -label %x -linecolor gray -shape bus}}
+
+array unset createdGroup
+array set createdGroup {}
+set id [waveform add -signals [subst  {
+	{[format {top_tb.clk}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {top_tb.rst_n}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {top_tb.fail_cnt}]}
+	} ]]
+waveform format $id -color #00ff00 -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.sop_in}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.vld_in}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.dat_in[9:0]}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Control_Unit.state_cur[2:0]}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Counter.cnt_out[9:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Counter.cnt_par}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Counter.cnt_end}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Control_Unit.sop_out}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Control_Unit.vld_out}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Control_Unit.sys_rdy}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.dat_out[9:0]}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Syn.dat_in[9:0]}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Syn.Control_Unit.state_cur[1:0]}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Syn.Counter.cnt_out[9:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Syn.Control_Unit.cnt_end}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Syn.Control_Unit.vld_out}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Syn.Control_Unit.sys_rdy}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Syn.syn_out[29:0]}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Kes.syn_in[29:0]}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00 -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Kes.Ctrl_Unit.state_cur[1:0]}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Kes.Br_Unit.cnt_out[4:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Kes.cnt_end}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Kes.Ctrl_Unit.vld_out}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Kes.Ctrl_Unit.sys_rdy}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Kes.lam_out[15:0]}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Kes.ome_out[15:0]}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Chien.lam_in[15:0]}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Chien.ome_in[15:0]}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Chien.CHIEN_CTRL.state_cur[2:0]}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Chien.CHIEN_CNT.cnt_out[9:0]}]}
+	} ]]
+waveform format $id -radix %d -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Chien.CHIEN_CNT.cnt_end}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Chien.CHIEN_CTRL.sop_out}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Chien.CHIEN_CTRL.vld_out}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Chien.CHIEN_CTRL.sys_rdy}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Chien.l_val_der[9:0]}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Chien.o_val[9:0]}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+
+waveform xview limits 39091.155ns 39341.155ns

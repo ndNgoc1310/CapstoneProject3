@@ -454,7 +454,7 @@ module rs_dec_kes_br
         .cout   (len_ge)                      
     );
     assign len_lte = ~len_ge; // len_lte = 1 khi cnt_out <= len_out
-    assign cnt_end = cnt_out[4] & cnt_out[3] & cnt_out[2]; // Đếm tới 28
+    assign cnt_end = cnt_out[4] & cnt_out[3] & cnt_out[2] & cnt_out[0]; // Đếm tới 29 rồi chuyển sang state DONE thực hiện chu kỳ cuối cùng, do state INIT (ảo) làm trễ 1 chu kỳ
     assign dis_neq_0 = |dis_out;
     assign delta = dis_neq_0 & len_lte;
 
@@ -492,7 +492,7 @@ module rs_dec_kes_ctrl
     always_comb begin
         case (state_cur)
             IDLE: begin
-                // Mealy Action: Bắt tín hiệu và nạp data NGAY LẬP TỨC ở nhịp có vld_in
+                // Mealy Action: Bắt tín hiệu và nạp data NGAY LẬP TỨC ở nhịp có vld_in, nhưng do tại chu kỳ đầu, init = 1, tức là thanh ghi nạp giá trị khởi tạo, phải đến chu kỳ thứ hai mới thực sự nạp data vào, tổng thể trễ 1 chu kỳ so với các khối khác
                 init    = vld_in ? 1'b1 : 1'b0;
                 reg_en  = vld_in ? 1'b1 : 1'b0;
                 len_en  = vld_in ? 1'b1 : 1'b0;

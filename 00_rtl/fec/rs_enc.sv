@@ -28,7 +28,6 @@ module rs_enc
     logic [WIDTH-1:0]   xor_fdbk;               // Tín hiệu trung gian sau khi XOR giữa dat_in và thanh ghi bậc cao nhất của số dư, được sử dụng làm input cho các bộ nhân hằng số
     logic [WIDTH-1:0]   fdbk;                   // Tín hiệu phản hồi dùng để tính toán số dư
     logic               ctrl;                   // Biến điều khiển để xác định khi nào bắt đầu xuất parity sau khi đã xuất hết 514 symbols dữ liệu
-    logic               cnt_en;                 // Tín hiệu enable cho bộ đếm, được điều khiển bởi FSM để bắt đầu đếm khi nhận được symbol đầu tiên của message và tiếp tục đếm trong suốt quá trình xuất message và parity
     logic               cnt_par;                // Tín hiệu để xác định khi nào đã xuất đủ 514 symbols dữ liệu, dựa trên giá trị của bộ đếm (count = 513, bit 9 và bit 0 đều là 1)
     logic               cnt_end;                // Tín hiệu để xác định khi nào đã xuất đủ 29 symbols parity, dựa trên giá trị của bộ đếm (count = 542, bit [9] và bit [4:1] đều là 1)
 
@@ -129,7 +128,7 @@ module rs_enc
     rs_enc_cnt Counter (
         .clk        (clk),
         .rst_n      (rst_n),
-        .cnt_en     (cnt_en),   // Tín hiệu enable cho bộ đếm, được điều khiển bởi FSM để bắt đầu đếm khi nhận được symbol đầu tiên của message và tiếp tục đếm trong suốt quá trình xuất message và parity
+        .reg_en     (reg_en),   // Tín hiệu enable cho bộ đếm, được điều khiển bởi FSM để bắt đầu đếm khi nhận được symbol đầu tiên của message và tiếp tục đếm trong suốt quá trình xuất message và parity
         .vld_out    (vld_out),  // Tín hiệu vld_out từ FSM, cho biết khi nào đang xuất dữ liệu có giá trị (bao gồm cả message và parity)
         .sys_rdy    (sys_rdy),  // Tín hiệu sys_rdy từ FSM, cho biết khi nào sẵn sàng nhận gói tin mới
         .cnt_par    (cnt_par),  // Tín hiệu để xác định khi nào đã xuất đủ 514 symbols dữ liệu (message), dựa trên giá trị của bộ đếm
@@ -148,7 +147,6 @@ module rs_enc
         .sop_out    (sop_out),
         .vld_out    (vld_out),
         .reg_en     (reg_en),
-        .cnt_en     (cnt_en),
         .ctrl       (ctrl),
         .sys_rdy    (sys_rdy),
         .sys_err    (sys_err)
@@ -167,7 +165,7 @@ module rs_enc_cnt
 (
     input  logic clk,
     input  logic rst_n,
-    input  logic cnt_en,    // Tín hiệu enable cho bộ đếm, được điều khiển bởi FSM để bắt đầu đếm khi nhận được symbol đầu tiên của message và tiếp tục đếm trong suốt quá trình xuất message và parity
+    input  logic reg_en,    // Tín hiệu enable cho bộ đếm, được điều khiển bởi FSM để bắt đầu đếm khi nhận được symbol đầu tiên của message và tiếp tục đếm trong suốt quá trình xuất message và parity
     input  logic vld_out,   // Tín hiệu vld_out từ FSM, cho biết khi nào đang xuất dữ liệu có giá trị (bao gồm cả message và parity)
     input  logic sys_rdy,   // Tín hiệu sys_rdy từ FSM, cho biết khi nào sẵn sàng nhận gói tin mới
     output logic cnt_par,   // Tín hiệu để xác định khi nào đã xuất đủ 514 symbols dữ liệu (message), dựa trên giá trị của bộ đếm
@@ -183,7 +181,7 @@ module rs_enc_cnt
     flop_r_nb #(.WIDTH(WIDTH)) Cnt_Reg (
         .clk   (clk),
         .rst_n (rst_n),
-        .en    (cnt_en),
+        .en    (reg_en),
         .d     (cnt_in), 
         .q     (cnt_out) 
     );
@@ -199,7 +197,7 @@ module rs_enc_cnt
 
     // Logic để reset bộ đếm về 0 khi có tín hiệu vld_out và sys_rdy cùng lên cao
     and_nb #(.WIDTH(WIDTH)) Cnt_Rst (
-        .a  ({WIDTH{~(vld_out & sys_rdy)}}),    // Khi vld_out và sys_rdy cùng lên cao, tạo ra tín hiệu reset cho bộ đếm
+        .a  ({WIDTH{(~sys_rdy)}}),              // Khi sys_rdy lên cao, tạo ra tín hiệu reset cho bộ đếm
         .b  (cnt_nxt),                          // Giá trị tiếp theo của bộ đếm sau khi cộng 1
         .y  (cnt_in)                            // Tín hiệu đầu vào cho bộ đếm, sẽ là cnt_nxt khi đang xuất message/parity, hoặc 0 khi bắt đầu gói tin mới
     );
@@ -226,7 +224,6 @@ module rs_enc_ctrl
     output logic sop_out,   // Đánh dấu bắt đầu một gói tin ra (Start of Packet), chỉ được đánh dấu ở symbol đầu tiên của message
     output logic vld_out,   // Tín hiệu valid cho dat_out, có giá trị trong suốt quá trình xuất message và parity
     output logic reg_en,    // Tín hiệu enable cho 30 thanh ghi LFSR, được điều khiển bởi FSM để cập nhật trong quá trình nhận message và xuất parity
-    output logic cnt_en,    // Tín hiệu enable cho bộ đếm, được điều khiển bởi FSM để bắt đầu đếm khi nhận được symbol đầu tiên của message và tiếp tục đếm trong suốt quá trình xuất message và parity
     output logic ctrl,      // Biến điều khiển để xác định khi nào bắt đầu xuất parity sau khi đã xuất hết 514 symbols dữ liệu
     output logic sys_rdy,   // Sẵn sàng nhận gói tin mới, chỉ ở mức cao khi FSM ở trạng thái IDLE hoặc sau khi hoàn thành xuất codeword
     output logic sys_err    // Báo hiệu gói tin không hợp lệ, được đặt ở mức cao khi nhận được tín hiệu không hợp lệ trong quá trình IDLE hoặc MSG, hoặc khi FSM rơi vào trạng thái không xác định
@@ -250,7 +247,6 @@ module rs_enc_ctrl
                 sop_out = (sop_in & vld_in) ? 1'b1 : 1'b0;
                 vld_out = (sop_in & vld_in) ? 1'b1 : 1'b0;
                 reg_en  = (sop_in & vld_in) ? 1'b1 : 1'b0;
-                cnt_en  = (sop_in & vld_in) ? 1'b1 : 1'b0;
                 ctrl    = 1'b1; 
                 sys_rdy = (sop_in & vld_in) ? 1'b0 : 1'b1;  // Ép sys_rdy = 0 khi có dữ liệu vào để tránh trigger mạch reset bộ đếm
                 sys_err = 1'b0;
@@ -260,7 +256,6 @@ module rs_enc_ctrl
                 sop_out = 1'b0; // Chỉ đánh dấu sop_out ở symbol đầu tiên, sau đó hạ xuống
                 vld_out = 1'b1;   
                 reg_en  = 1'b1;
-                cnt_en  = 1'b1;     
                 ctrl    = 1'b1;    
                 sys_rdy = 1'b0;   
                 sys_err = 1'b0;   
@@ -270,7 +265,6 @@ module rs_enc_ctrl
                 sop_out = 1'b0;    
                 vld_out = 1'b1;   
                 reg_en  = 1'b1; 
-                cnt_en  = 1'b1;
                 ctrl    = 1'b0; // Chuyển sang xuất parity
                 sys_rdy = 1'b0;   
                 sys_err = 1'b0;   
@@ -280,7 +274,6 @@ module rs_enc_ctrl
                 sop_out = 1'b0;    
                 vld_out = 1'b1;   
                 reg_en  = 1'b1;  
-                cnt_en  = 1'b1; // Enable bộ đếm để load giá trị 0 khi bắt đầu gói tin mới 
                 ctrl    = 1'b0;     
                 sys_rdy = 1'b1; // Sẵn sàng nhận gói tin mới sau khi đã hoàn thành xuất codeword
                 sys_err = 1'b0;   
@@ -290,7 +283,6 @@ module rs_enc_ctrl
                 sop_out = (sop_in & vld_in) ? 1'b1 : 1'b0;
                 vld_out = (sop_in & vld_in) ? 1'b1 : 1'b0;
                 reg_en  = (sop_in & vld_in) ? 1'b1 : 1'b0;
-                cnt_en  = (sop_in & vld_in) ? 1'b1 : 1'b0;
                 ctrl    = 1'b1; 
                 sys_rdy = (sop_in & vld_in) ? 1'b0 : 1'b1;  // Ép sys_rdy = 0 khi có dữ liệu vào để tránh trigger mạch reset bộ đếm
                 sys_err = 1'b1;                             // Vẫn báo cờ lỗi ở nhịp này để testbench nhận biết
@@ -300,7 +292,6 @@ module rs_enc_ctrl
                 sop_out = (sop_in & vld_in) ? 1'b1 : 1'b0;
                 vld_out = (sop_in & vld_in) ? 1'b1 : 1'b0;
                 reg_en  = (sop_in & vld_in) ? 1'b1 : 1'b0;
-                cnt_en  = (sop_in & vld_in) ? 1'b1 : 1'b0;
                 ctrl    = 1'b1; 
                 sys_rdy = (sop_in & vld_in) ? 1'b0 : 1'b1;  // Ép sys_rdy = 0 khi có dữ liệu vào để tránh trigger mạch reset bộ đếm
                 sys_err = 1'b1;                             // Vẫn báo cờ lỗi ở nhịp này để testbench nhận biết

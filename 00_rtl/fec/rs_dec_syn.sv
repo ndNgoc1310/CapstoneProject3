@@ -21,7 +21,6 @@ module rs_dec_syn
     logic               ctrl;
     logic [WIDTH-1:0]   fdbk    [NSYM-1:0]; // Mảng lưu trữ giá trị fdbk cho mỗi thanh ghi syndrome, được tính toán từ dữ liệu đầu vào và giá trị syndrome hiện tại thông qua logic fdbk
     logic [WIDTH-1:0]   reg_in  [NSYM-1:0]; // Mảng lưu trữ giá trị đầu vào cho mỗi thanh ghi syndrome, được tạo ra từ giá trị fdbk sau khi nhân với hằng số alpha^i tương ứng thông qua các bộ nhân hằng số
-    logic               cnt_en;             // Tín hiệu enable cho bộ đếm, được điều khiển bởi FSM để bắt đầu đếm khi nhận được symbol đầu tiên          
     logic               cnt_end;            // Tín hiệu để xác định khi nào đã xử lý xong 543 received symbols, được tính toán từ giá trị của bộ đếm trong module rs_dec_syn_cnt
 
     // --- 1. Instantiate 30 Bộ Nhân Hằng Số (Generated from Python) ---
@@ -81,7 +80,7 @@ module rs_dec_syn
     rs_dec_syn_cnt Counter (
         .clk        (clk),
         .rst_n      (rst_n),
-        .cnt_en     (cnt_en),      
+        .reg_en     (reg_en),      
         .vld_out    (vld_out),     
         .cnt_end    (cnt_end)    
     );    
@@ -101,7 +100,6 @@ module rs_dec_syn
         .cnt_end    (cnt_end),   
         .vld_out    (vld_out),
         .reg_en     (reg_en),
-        .cnt_en     (cnt_en),
         .ctrl       (ctrl),
         .sys_rdy    (sys_rdy),
         .sys_err    (sys_err)
@@ -119,7 +117,7 @@ module rs_dec_syn_cnt
 (
     input  logic clk,
     input  logic rst_n,
-    input  logic cnt_en,       // Tín hiệu enable cho bộ đếm
+    input  logic reg_en,       // Tín hiệu enable cho bộ đếm
     input  logic vld_out,      // Tín hiệu vld_out từ FSM, cho biết khi nào đang xuất dữ liệu có giá trị
     output logic cnt_end      // Tín hiệu để xác định khi nào đã xử lý xong 543 received symbols, được tính toán từ giá trị của bộ đếm (khi cnt_out đạt giá trị 542, tức là đã nhận đủ N symbols)
 );
@@ -133,7 +131,7 @@ module rs_dec_syn_cnt
     flop_r_nb #(.WIDTH(WIDTH)) Counter (
         .clk   (clk),
         .rst_n (rst_n),
-        .en    (cnt_en),
+        .en    (reg_en),
         .d     (cnt_in), 
         .q     (cnt_out) 
     );
@@ -236,7 +234,6 @@ module rs_dec_syn_ctrl
     input  logic cnt_end,   // Tín hiệu để xác định khi nào đã xử lý xong 543 received symbols, được tính toán từ giá trị của bộ đếm trong module rs_dec_syn_cnt
     output logic vld_out,   // Báo hiệu tính xong (kết thúc gói)
     output logic reg_en,    // Tín hiệu enable cho các thanh ghi syndrome
-    output logic cnt_en,    // Tín hiệu enable cho bộ đếm, được điều khiển bởi FSM để bắt đầu đếm khi nhận được symbol đầu tiên
     output logic ctrl,      // Tín hiệu điều khiển chung cho toàn bộ module
     output logic sys_rdy,   // Báo hiệu module sẵn sàng nhận dữ liệu mới (sau khi đã tính xong)
     output logic sys_err    // Báo hiệu lỗi (nếu có) trong quá trình tính toán syndrome
@@ -258,7 +255,6 @@ module rs_dec_syn_ctrl
             IDLE: begin
                 vld_out = 1'b0;                             // Chỉ báo hiệu tính xong khi đã hoàn thành gói tin
                 reg_en  = (sop_in & vld_in) ? 1'b1 : 1'b0;  // Bật enable NGAY LẬP TỨC ở nhịp có SOP (Mealy Machine)
-                cnt_en  = (sop_in & vld_in) ? 1'b1 : 1'b0;  // Bật enable NGAY LẬP TỨC ở nhịp có SOP (Mealy Machine)
                 ctrl    = 1'b0;                             // ctrl = 0 để nạp thẳng r0
                 sys_rdy = (sop_in & vld_in) ? 1'b0 : 1'b1;  // Có thể hạ sys_rdy xuống 0 ngay lập tức nếu có data vào
                 sys_err = 1'b0;                             // Không có lỗi khi reset
@@ -267,7 +263,6 @@ module rs_dec_syn_ctrl
             CALC: begin
                 vld_out = 1'b0;     
                 reg_en  = 1'b1;
-                cnt_en  = 1'b1;     
                 ctrl    = 1'b1; // Bắt đầu thực hiện fdbk sau khi đã nhận được symbol đầu tiên
                 sys_rdy = 1'b0;     
                 sys_err = 1'b0;
@@ -276,7 +271,6 @@ module rs_dec_syn_ctrl
             DONE: begin
                 vld_out = 1'b1; // Báo hiệu đã tính xong khi đã nhận đủ N symbols
                 reg_en  = 1'b1;       
-                cnt_en  = 1'b1; // Vẫn enable bộ đếm để load giá trị 0 nhằm reset
                 ctrl    = 1'b1; // Giữ ctrl để xuất ra fdbk cuối cùng cho các syndrome
                 sys_rdy = 1'b1; // Sẵn sàng nhận dữ liệu mới sau khi đã hoàn thành gói tin
                 sys_err = 1'b0;
@@ -285,7 +279,6 @@ module rs_dec_syn_ctrl
             ERROR: begin // Mealy Action: Chộp data ngay lập tức nếu có gói tin mới đập vào
                 vld_out = 1'b0;
                 reg_en  = (sop_in & vld_in) ? 1'b1 : 1'b0;
-                cnt_en  = (sop_in & vld_in) ? 1'b1 : 1'b0;
                 ctrl    = 1'b0; 
                 sys_rdy = (sop_in & vld_in) ? 1'b0 : 1'b1;  // Có thể hạ sys_rdy xuống 0 ngay lập tức nếu có data vào
                 sys_err = 1'b1;                             // Vẫn báo cờ lỗi ở nhịp này để testbench nhận biết
@@ -294,7 +287,6 @@ module rs_dec_syn_ctrl
             default: begin // ERROR
                 vld_out = 1'b0;
                 reg_en  = (sop_in & vld_in) ? 1'b1 : 1'b0;
-                cnt_en  = (sop_in & vld_in) ? 1'b1 : 1'b0;
                 ctrl    = 1'b0; 
                 sys_rdy = (sop_in & vld_in) ? 1'b0 : 1'b1; // Có thể hạ sys_rdy xuống 0 ngay lập tức nếu có data vào
                 sys_err = 1'b1; // Vẫn báo cờ lỗi ở nhịp này để testbench nhận biết

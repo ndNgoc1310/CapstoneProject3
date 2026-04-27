@@ -26,8 +26,6 @@ module rs_dec_chien
     logic uncorr;
     logic init;
     logic reg_en;
-    logic cnt_en;
-
 
     // --- Submodules ---
     rs_dec_chien_lam #(.WIDTH(WIDTH), .ORDER(ORDER)) CHIEN_LAM (
@@ -55,7 +53,7 @@ module rs_dec_chien
         .clk        (clk),
         .rst_n      (rst_n),
         .init       (init),
-        .cnt_en     (cnt_en),
+        .reg_en     (reg_en),
         .err_flg    (err_flg),
         .len_in     (len_in),
 
@@ -72,7 +70,6 @@ module rs_dec_chien
 
         .init       (init),
         .reg_en     (reg_en),
-        .cnt_en     (cnt_en),
         .sop_out    (sop_out),
         .vld_out    (vld_out),
         .sys_rdy    (sys_rdy),
@@ -248,7 +245,7 @@ module rs_dec_chien_cnt
     input logic         clk,
     input logic         rst_n,
     input logic         init,
-    input logic         cnt_en,
+    input logic         reg_en,
     input logic         err_flg,
     input logic [4:0]   len_in,
 
@@ -280,7 +277,7 @@ module rs_dec_chien_cnt
     flop_r_nb #(.WIDTH(CNT_WIDTH)) Cnt_Reg (
         .clk    (clk),
         .rst_n  (rst_n),
-        .en     (cnt_en),
+        .en     (reg_en),
         .d      (cnt_in),
         .q      (cnt_out)
     );
@@ -338,7 +335,6 @@ module rs_dec_chien_ctrl
 
     output logic init,
     output logic reg_en,
-    output logic cnt_en,
     output logic sop_out,
     output logic vld_out,
     output logic sys_rdy,
@@ -362,7 +358,6 @@ module rs_dec_chien_ctrl
             IDLE: begin // Mealy Action: Bắt tín hiệu và nạp data NGAY LẬP TỨC ở nhịp có vld_in
                 init    = vld_in ? 1'b1 : 1'b0;
                 reg_en  = vld_in ? 1'b1 : 1'b0;
-                cnt_en  = vld_in ? 1'b1 : 1'b0;
                 sop_out = 1'b0;
                 vld_out = 1'b0;
                 sys_rdy = vld_in ? 1'b0 : 1'b1; 
@@ -372,7 +367,6 @@ module rs_dec_chien_ctrl
             CALC1: begin
                 init    = 1'b0;
                 reg_en  = 1'b1;
-                cnt_en  = 1'b1;
                 sop_out = 1'b1;
                 vld_out = 1'b1;
                 sys_rdy = 1'b0;  
@@ -382,7 +376,6 @@ module rs_dec_chien_ctrl
             CALC2: begin
                 init    = 1'b0;
                 reg_en  = 1'b1;
-                cnt_en  = 1'b1;
                 sop_out = 1'b0;
                 vld_out = 1'b1;
                 sys_rdy = 1'b0;  
@@ -392,7 +385,6 @@ module rs_dec_chien_ctrl
             DONE: begin
                 init    = 1'b0;
                 reg_en  = 1'b1;
-                cnt_en  = 1'b1;
                 sop_out = 1'b0;
                 vld_out = 1'b1; 
                 sys_rdy = 1'b1;  
@@ -402,7 +394,6 @@ module rs_dec_chien_ctrl
             ERROR: begin
                 init    = vld_in ? 1'b1 : 1'b0;
                 reg_en  = vld_in ? 1'b1 : 1'b0;
-                cnt_en  = vld_in ? 1'b1 : 1'b0;
                 sop_out = 1'b0;
                 vld_out = 1'b0;
                 sys_rdy = vld_in ? 1'b0 : 1'b1; 
@@ -412,7 +403,6 @@ module rs_dec_chien_ctrl
             default: begin
                 init    = vld_in ? 1'b1 : 1'b0;
                 reg_en  = vld_in ? 1'b1 : 1'b0;
-                cnt_en  = vld_in ? 1'b1 : 1'b0;
                 sop_out = 1'b0;
                 vld_out = 1'b0;
                 sys_rdy = vld_in ? 1'b0 : 1'b1; 

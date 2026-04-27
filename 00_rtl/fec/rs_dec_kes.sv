@@ -29,8 +29,6 @@ module rs_dec_kes
     logic               cnt_end;
     logic               init;
     logic               reg_en;
-    logic               cnt_en;
-    logic               len_en;
 
     // --- Submodule Instantiations ---
     rs_dec_kes_lam #(.WIDTH(WIDTH), .ORDER(ORDER)) Lam_Dpath (
@@ -89,8 +87,7 @@ module rs_dec_kes
         .clk        (clk),
         .rst_n      (rst_n),
         .init       (init),
-        .len_en     (len_en),
-        .cnt_en     (cnt_en),
+        .reg_en     (reg_en),
         .dis_out    (dis_out),
 
         .len_out    (len_out),
@@ -106,8 +103,6 @@ module rs_dec_kes
 
         .init       (init),
         .reg_en     (reg_en),
-        .len_en     (len_en),
-        .cnt_en     (cnt_en),
         .vld_out    (vld_out),
         .sys_rdy    (sys_rdy),
         .sys_err    (sys_err)
@@ -372,8 +367,7 @@ module rs_dec_kes_br
     input logic             clk,
     input logic             rst_n,
     input logic             init,
-    input logic             len_en,
-    input logic             cnt_en,
+    input logic             reg_en,
     input logic [WIDTH-1:0] dis_out,
 
     output logic [CNT_WIDTH-1:0]    len_out,
@@ -417,7 +411,7 @@ module rs_dec_kes_br
     flop_r_nb #(.WIDTH(CNT_WIDTH)) Len_Reg (
         .clk    (clk),
         .rst_n  (rst_n),
-        .en     (len_en),
+        .en     (reg_en),
         .d      (len_in),
         .q      (len_out)
     );
@@ -440,7 +434,7 @@ module rs_dec_kes_br
     flop_r_nb #(.WIDTH(CNT_WIDTH)) Cnt_Reg (
         .clk    (clk),
         .rst_n  (rst_n),
-        .en     (cnt_en),
+        .en     (reg_en),
         .d      (cnt_in),
         .q      (cnt_out)
     );
@@ -471,8 +465,6 @@ module rs_dec_kes_ctrl
 
     output logic init,
     output logic reg_en,
-    output logic len_en,
-    output logic cnt_en,
     output logic vld_out,
     output logic sys_rdy,
     output logic sys_err
@@ -495,8 +487,6 @@ module rs_dec_kes_ctrl
                 // Mealy Action: Bắt tín hiệu và nạp data NGAY LẬP TỨC ở nhịp có vld_in, nhưng do tại chu kỳ đầu, init = 1, tức là thanh ghi nạp giá trị khởi tạo, phải đến chu kỳ thứ hai mới thực sự nạp data vào, tổng thể trễ 1 chu kỳ so với các khối khác
                 init    = vld_in ? 1'b1 : 1'b0;
                 reg_en  = vld_in ? 1'b1 : 1'b0;
-                len_en  = vld_in ? 1'b1 : 1'b0;
-                cnt_en  = vld_in ? 1'b1 : 1'b0;
                 vld_out = 1'b0;
                 sys_rdy = vld_in ? 1'b0 : 1'b1;
                 sys_err = 1'b0;
@@ -505,8 +495,6 @@ module rs_dec_kes_ctrl
             CALC: begin
                 init    = 1'b0;
                 reg_en  = 1'b1;
-                len_en  = 1'b1;
-                cnt_en  = 1'b1;
                 vld_out = 1'b0;
                 sys_rdy = 1'b0;  
                 sys_err = 1'b0; 
@@ -515,8 +503,6 @@ module rs_dec_kes_ctrl
             DONE: begin 
                 init    = 1'b0;
                 reg_en  = 1'b1;
-                len_en  = 1'b1;
-                cnt_en  = 1'b1;
                 vld_out = 1'b1; 
                 sys_rdy = 1'b1;  
                 sys_err = 1'b0; 
@@ -527,8 +513,6 @@ module rs_dec_kes_ctrl
                 // Nhưng vẫn giữ cờ sys_err = 1 để hệ thống biết nó vừa thoát từ trạng thái lỗi
                 init    = vld_in ? 1'b1 : 1'b0;
                 reg_en  = vld_in ? 1'b1 : 1'b0;
-                len_en  = vld_in ? 1'b1 : 1'b0;
-                cnt_en  = vld_in ? 1'b1 : 1'b0;
                 vld_out = 1'b0;
                 sys_rdy = vld_in ? 1'b0 : 1'b1; 
                 sys_err = 1'b1; // Vẫn giữ 1'b1 ở nhịp này
@@ -539,8 +523,6 @@ module rs_dec_kes_ctrl
                 // Nhưng vẫn giữ cờ sys_err = 1 để hệ thống biết nó vừa thoát từ trạng thái lỗi
                 init    = vld_in ? 1'b1 : 1'b0;
                 reg_en  = vld_in ? 1'b1 : 1'b0;
-                len_en  = vld_in ? 1'b1 : 1'b0;
-                cnt_en  = vld_in ? 1'b1 : 1'b0;
                 vld_out = 1'b0;
                 sys_rdy = vld_in ? 1'b0 : 1'b1; 
                 sys_err = 1'b1; // Vẫn giữ 1'b1 ở nhịp này

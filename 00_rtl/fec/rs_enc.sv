@@ -129,7 +129,6 @@ module rs_enc
         .clk        (clk),
         .rst_n      (rst_n),
         .reg_en     (reg_en),   // Tín hiệu enable cho bộ đếm, được điều khiển bởi FSM để bắt đầu đếm khi nhận được symbol đầu tiên của message và tiếp tục đếm trong suốt quá trình xuất message và parity
-        .vld_out    (vld_out),  // Tín hiệu vld_out từ FSM, cho biết khi nào đang xuất dữ liệu có giá trị (bao gồm cả message và parity)
         .sys_rdy    (sys_rdy),  // Tín hiệu sys_rdy từ FSM, cho biết khi nào sẵn sàng nhận gói tin mới
         .cnt_par    (cnt_par),  // Tín hiệu để xác định khi nào đã xuất đủ 514 symbols dữ liệu (message), dựa trên giá trị của bộ đếm
         .cnt_end    (cnt_end)   // Tín hiệu để xác định khi nào đã xuất đủ 29 symbols parity, dựa trên giá trị của bộ đếm
@@ -166,7 +165,6 @@ module rs_enc_cnt
     input  logic clk,
     input  logic rst_n,
     input  logic reg_en,    // Tín hiệu enable cho bộ đếm, được điều khiển bởi FSM để bắt đầu đếm khi nhận được symbol đầu tiên của message và tiếp tục đếm trong suốt quá trình xuất message và parity
-    input  logic vld_out,   // Tín hiệu vld_out từ FSM, cho biết khi nào đang xuất dữ liệu có giá trị (bao gồm cả message và parity)
     input  logic sys_rdy,   // Tín hiệu sys_rdy từ FSM, cho biết khi nào sẵn sàng nhận gói tin mới
     output logic cnt_par,   // Tín hiệu để xác định khi nào đã xuất đủ 514 symbols dữ liệu (message), dựa trên giá trị của bộ đếm
     output logic cnt_end    // Tín hiệu để xác định khi nào đã xuất đủ 29 symbols parity, dựa trên giá trị của bộ đếm

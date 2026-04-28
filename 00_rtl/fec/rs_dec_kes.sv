@@ -502,7 +502,7 @@ module rs_dec_kes_ctrl
 
             DONE: begin 
                 init    = 1'b0;
-                reg_en  = 1'b0; // State DONE chỉ là để chờ 1 clk cho data từ ngõ D ra ngõ Q của flip flop, không enable để tránh len_out cập nhật dư 1 chu kỳ dẫn đến sai giá trị L
+                reg_en  = 1'b0; // State DONE chỉ là để chờ 1 clk cho data cuối cùng từ ngõ D ra ngõ Q của flip flop, không enable để tránh len_out cập nhật dư 1 chu kỳ dẫn đến sai giá trị L. Ta cũng không cần reset counter vì ta sẽ khởi tạo nó ở đầu gói tin mới với init=1.
                 vld_out = 1'b1;  
                 sys_rdy = 1'b1;  
                 sys_err = 1'b0; 

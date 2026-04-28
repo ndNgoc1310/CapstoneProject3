@@ -271,7 +271,7 @@ module rs_enc_ctrl
             DONE: begin
                 sop_out = 1'b0;    
                 vld_out = 1'b1;   
-                reg_en  = 1'b1;  
+                reg_en  = 1'b1; // State DONE chỉ là để chờ 1 clk cho data cuối cùng từ ngõ D ra ngõ Q của flip flop. Đồng thời, vì ta dùng sys_rdy ở chu kỳ cuối để reset counter, nên cần giữ enable trong chu kỳ cuối. Lúc này, các thanh ghi khác sẽ thực hiện dư 1 chu kỳ nhưng sẽ không dùng đến. 
                 ctrl    = 1'b0;     
                 sys_rdy = 1'b1; // Sẵn sàng nhận gói tin mới sau khi đã hoàn thành xuất codeword
                 sys_err = 1'b0;   

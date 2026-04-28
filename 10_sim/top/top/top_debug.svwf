@@ -353,7 +353,6 @@ set id [waveform add -signals [subst  {
 	{[format {top_tb.DUT.Decoder.Kes.Syn_Wdw.syn_buf_in[29:0]}]}
 	} ]]
 waveform format $id -color #ffff00 -namecolor #ffff00
-waveform hierarchy collapse $id
 set id [waveform add -signals [subst  {
 	{[format {top_tb.DUT.Decoder.Kes.Syn_Wdw.syn_buf_out[29:0]}]}
 	} ]]
@@ -447,6 +446,7 @@ set id2 [lindex [waveform hierarchy content $id] 14]
 waveform format $id2 -radix %d
 set id2 [lindex [waveform hierarchy content $id] 15]
 waveform format $id2 -radix %d
+waveform hierarchy collapse $id
 set id [waveform add -signals [subst  {
 	{[format {top_tb.DUT.Decoder.Kes.ome_out[15:0]}]}
 	} ]]
@@ -602,6 +602,7 @@ set id2 [lindex [waveform hierarchy content $id] 14]
 waveform format $id2 -radix %d
 set id2 [lindex [waveform hierarchy content $id] 15]
 waveform format $id2 -radix %d
+waveform hierarchy collapse $id
 set id [waveform add -signals [subst  {
 	{[format {top_tb.DUT.Decoder.Chien.CHIEN_LAM.l_val_out[15:0]}]}
 	} ]]
@@ -749,4 +750,4 @@ set id [waveform add -signals [subst  {
 	} ]]
 waveform format $id -radix %d -color #ff00ff -namecolor #ff00ff
 
-waveform xview limits 17063.176ns 17416.752ns
+waveform xview limits 17053.456ns 17484.56ns

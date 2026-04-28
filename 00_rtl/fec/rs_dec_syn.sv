@@ -270,7 +270,7 @@ module rs_dec_syn_ctrl
 
             DONE: begin
                 vld_out = 1'b1; // Báo hiệu đã tính xong khi đã nhận đủ N symbols
-                reg_en  = 1'b1; // Giữ enable để reset counter  
+                reg_en  = 1'b1; // State DONE chỉ là để chờ 1 clk cho data cuối cùng từ ngõ D ra ngõ Q của flip flop. Đồng thời, vì ta dùng vld_out ở chu kỳ cuối để reset counter, nên cần giữ enable trong chu kỳ cuối. Lúc này, các thanh ghi khác sẽ thực hiện dư 1 chu kỳ nhưng sẽ không dùng đến. 
                 ctrl    = 1'b1; // Giữ ctrl để xuất ra fdbk cuối cùng cho các syndrome
                 sys_rdy = 1'b1; // Sẵn sàng nhận dữ liệu mới sau khi đã hoàn thành gói tin
                 sys_err = 1'b0;

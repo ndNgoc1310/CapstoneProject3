@@ -283,7 +283,7 @@ module rs_dec_chien_cnt
     );
 
     // --- 2.
-    assign cnt_end = &{cnt_out[9], cnt_out[4:0]}; // Đếm tới 543 rồi chuyển sang state DONE thực hiện chu kỳ cuối cùng, do state INIT (ảo) làm trễ 1 chu kỳ
+    assign cnt_end = &{cnt_out[9], cnt_out[4:1]}; // Đếm tới 542 rồi chuyển sang state DONE thực hiện chu kỳ cuối cùng, dù có state INIT (ảo) nhưng chu kỳ nạp giá trị khởi điểm này được tính là dò lỗi tại ví trí đầu tiên (alpha^0 = 1), nên tổng cộng vẫn chỉ có 544 chu kỳ
 
     // --- 3.
     logic [4:0] err_cnt_nxt;
@@ -389,9 +389,9 @@ module rs_dec_chien_ctrl
 
             DONE: begin
                 init    = 1'b0;
-                reg_en  = 1'b0;
+                reg_en  = 1'b0; // State DONE chỉ là để chờ 1 clk cho data cuối cùng từ ngõ D ra ngõ Q của flip flop, không cần enable các thanh ghi. Ta cũng không cần reset counter vì ta sẽ khởi tạo nó ở đầu gói tin mới với init=1.
                 sop_out = 1'b0;
-                vld_out = 1'b1; 
+                vld_out = 1'b1;
                 sys_rdy = 1'b1;  
                 sys_err = 1'b0; 
             end

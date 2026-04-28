@@ -92,6 +92,10 @@ set id [waveform add -signals [subst  {
 	} ]]
 waveform format $id -color #ff00ff -namecolor #ff00ff
 set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Syn.reg_en}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
 	{[format {top_tb.DUT.Decoder.Syn.syn_out[29:0]}]}
 	} ]]
 waveform format $id -color #ff00ff -namecolor #ff00ff
@@ -120,9 +124,18 @@ set id [waveform add -signals [subst  {
 	} ]]
 waveform format $id -color #ffff00 -namecolor #ffff00
 set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Kes.init}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Kes.reg_en}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
 	{[format {top_tb.DUT.Decoder.Kes.lam_out[15:0]}]}
 	} ]]
 waveform format $id -color #ffff00 -namecolor #ffff00
+waveform hierarchy collapse $id
 set id [waveform add -signals [subst  {
 	{[format {top_tb.DUT.Decoder.Kes.ome_out[15:0]}]}
 	} ]]
@@ -168,4 +181,4 @@ set id [waveform add -signals [subst  {
 	} ]]
 waveform format $id -color #00ffff -namecolor #00ffff
 
-waveform xview limits 27967.605ns 28217.605ns
+waveform xview limits 5417.004ns 5667.004ns

@@ -502,7 +502,7 @@ module rs_dec_kes_ctrl
 
             DONE: begin 
                 init    = 1'b0;
-                reg_en  = 1'b1;
+                reg_en  = 1'b1; // Giữ enable để reset counter  
                 vld_out = 1'b1; 
                 sys_rdy = 1'b1;  
                 sys_err = 1'b0; 

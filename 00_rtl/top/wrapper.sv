@@ -440,6 +440,7 @@ module wrapper
     // Thừa ra LED [7:4] 
     assign LEDR[7:4] = 'b0;
     
+    flop_r_nb        
     assign LEDR[3] = dec_err; // Cờ Uncorrectable Error
     assign LEDR[2] = dec_vld_out & ~dec_err & (inj_cnt == corr_cnt); // Cờ PASS
     assign LEDR[1] = dec_rdy; // Decoder sẵn sàng

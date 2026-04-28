@@ -270,7 +270,7 @@ module rs_dec_syn_ctrl
 
             DONE: begin
                 vld_out = 1'b1; // Báo hiệu đã tính xong khi đã nhận đủ N symbols
-                reg_en  = 1'b1;       
+                reg_en  = 1'b1; // Giữ enable để reset counter  
                 ctrl    = 1'b1; // Giữ ctrl để xuất ra fdbk cuối cùng cho các syndrome
                 sys_rdy = 1'b1; // Sẵn sàng nhận dữ liệu mới sau khi đã hoàn thành gói tin
                 sys_err = 1'b0;

@@ -389,7 +389,7 @@ module rs_dec_chien_ctrl
 
             DONE: begin
                 init    = 1'b0;
-                reg_en  = 1'b1;
+                reg_en  = 1'b0;
                 sop_out = 1'b0;
                 vld_out = 1'b1; 
                 sys_rdy = 1'b1;  

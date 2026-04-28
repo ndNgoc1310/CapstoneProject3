@@ -448,7 +448,7 @@ module rs_dec_kes_br
         .cout   (len_ge)                      
     );
     assign len_lte = ~len_ge; // len_lte = 1 khi cnt_out <= len_out
-    assign cnt_end = cnt_out[4] & cnt_out[3] & cnt_out[2] & cnt_out[0]; // Đếm tới 29 rồi chuyển sang state DONE thực hiện chu kỳ cuối cùng, do state INIT (ảo) làm trễ 1 chu kỳ
+    assign cnt_end = cnt_out[4] & cnt_out[3] & cnt_out[2] & cnt_out[0]; // Đếm tới 29 rồi chuyển sang state DONE thực hiện chu kỳ cuối cùng, do state INIT (ảo) làm trễ 1 chu kỳ, đảm bảo thực hiện đủ 30 chu kỳ không tính chu kỳ INIT, tức tổng là 31
     assign dis_neq_0 = |dis_out;
     assign delta = dis_neq_0 & len_lte;
 
@@ -502,8 +502,8 @@ module rs_dec_kes_ctrl
 
             DONE: begin 
                 init    = 1'b0;
-                reg_en  = 1'b0;   
-                vld_out = 1'b1; 
+                reg_en  = 1'b0; // State DONE chỉ là để chờ 1 clk cho data từ ngõ D ra ngõ Q của flip flop, không enable để tránh len_out cập nhật dư 1 chu kỳ dẫn đến sai giá trị L
+                vld_out = 1'b1;  
                 sys_rdy = 1'b1;  
                 sys_err = 1'b0; 
             end

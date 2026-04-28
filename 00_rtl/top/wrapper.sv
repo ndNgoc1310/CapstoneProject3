@@ -343,11 +343,10 @@ module dec_err_track_ram (
                     corr_cnt                 <= corr_cnt + 10'd1;
                 end
             end
-
-            rd_pos <= dec_pos_mem[rev_rd_addr];
-            rd_mag <= dec_mag_mem[rev_rd_addr];
-
         end
+
+        rd_pos <= dec_pos_mem[rev_rd_addr];
+        rd_mag <= dec_mag_mem[rev_rd_addr];
     end
 
     // FIX: Đảo ngược Index đọc mảng để Error đầu tiên vào trùng với Error đầu tiên ra

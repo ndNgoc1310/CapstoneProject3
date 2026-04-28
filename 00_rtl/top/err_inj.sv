@@ -139,12 +139,11 @@ module err_inj
                     inj_cnt <= inj_cnt + 10'd1;
                 end
             end
-
-            // Giao tiếp RAM cho Wrapper
-            rd_inj_pos <= pos_mem[rd_addr];
-            rd_inj_mag <= mag_mem[rd_addr];
-
         end
+    
+        // Giao tiếp RAM cho Wrapper
+        rd_inj_pos <= pos_mem[rd_addr];
+        rd_inj_mag <= mag_mem[rd_addr];
     end
 
     // Giao tiếp luồng dữ liệu

@@ -310,16 +310,21 @@ module rs_dec_chien_cnt
     flop_r_nb #(.WIDTH(5)) Err_Cnt_Reg (
         .clk    (clk),
         .rst_n  (rst_n),
-        .en     (init | err_flg), 
+        .en     ((init | err_flg) & reg_en), 
         .d      (err_cnt_in),
         .q      (err_cnt_out)
     );
 
     // 4. Logic phát hiện lỗi không thể sửa (Uncorrectable Error)
-    // Cờ này nảy lên 1 khi: 
+    // Nếu nhịp này có lỗi (err_flg=1), ta lấy giá trị D chuẩn bị nạp (err_cnt_in).
+    // Nếu không, ta lấy giá trị Q hiện tại (err_cnt_out).
+    logic [4:0] actual_err_cnt;
+    assign actual_err_cnt = err_flg ? err_cnt_in : err_cnt_out;
+
+    // Cờ này nảy lên 1 khi:
     // - Đang đếm mà số nghiệm đã VƯỢT QUÁ len_in (Early Termination)
     // - Hoặc khi chạy XONG gói tin (cnt_end=1) mà số nghiệm KHÔNG BẰNG len_in
-    assign uncorr = (err_cnt_out > len_in) | (cnt_end & (err_cnt_out != len_in));    
+    assign uncorr = (actual_err_cnt > len_in) | (cnt_end & (actual_err_cnt != len_in)); 
 
 endmodule: rs_dec_chien_cnt
 

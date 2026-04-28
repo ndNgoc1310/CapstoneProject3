@@ -1,4 +1,186 @@
 // =========================================================
+// Module Chính: WRAPPER
+// Bọc tất cả các thành phần lại và map ra I/O thực tế của DE10-Standard
+// =========================================================
+module wrapper
+(
+    input  logic       CLOCK_50,
+    
+    input  logic [9:0] SW,
+    input  logic [3:0] KEY,
+    
+    output logic [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5,
+    output logic [9:0] LEDR
+);
+
+    // --- 1. Đặt tên gợi nhớ cho các chân I/O ---
+    logic clk, rst_n, start_test;
+
+    logic [1:0] disp_mode;
+
+    logic [6:0] hex_led [5:0];
+    logic       key_nxt, key_prv;
+    logic [2:0] mode_sw;
+    logic       enc_err_led, dec_err_led;
+
+    // --- 2. Tín hiệu kết nối nội bộ ---
+    logic       enc_sop_in, enc_vld_in;
+    logic [9:0] enc_dat_in;
+    logic       enc_sop_out, enc_vld_out, enc_rdy, enc_err;
+    logic [9:0] enc_dat_out;
+    
+    logic       dec_sop_in, dec_vld_in;
+    logic [9:0] dec_dat_in;
+    logic       dec_sop_out, dec_vld_out, dec_rdy, dec_err, dec_err_flg;
+    logic [9:0] dec_err_mag;
+    logic [9:0] dec_dat_out;
+    
+    logic [9:0] inj_cnt;
+    logic [9:0] corr_cnt;
+    logic [9:0] rd_inj_pos, rd_inj_mag;
+    logic [9:0] rd_dec_pos, rd_dec_mag;
+    logic [9:0] disp_idx;
+
+    // --- 3. Instantiations ---
+
+    // Hardware Data Generator
+    msg_pumper #(.K(514)) PUMPER (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .start_test (start_test),
+        .enc_rdy    (enc_rdy),
+        .enc_sop_in (enc_sop_in),
+        .enc_vld_in (enc_vld_in),
+        .enc_dat_in (enc_dat_in)
+    );
+
+    // Top-Level Codec (RS_ENC + RS_DEC)
+    top #(.WIDTH(10), .NSYM(30), .ORDER(15), .K(544)) RS_CODEC_TOP (
+        .clk                (clk),
+        .rst_n              (rst_n),
+        .enc_sop_in         (enc_sop_in),
+        .enc_vld_in         (enc_vld_in),
+        .enc_dat_in         (enc_dat_in),
+        .enc_sop_out        (enc_sop_out),
+        .enc_vld_out        (enc_vld_out),
+        .enc_dat_out        (enc_dat_out),
+        .enc_rdy            (enc_rdy),
+        .enc_err            (enc_err),
+        .dec_sop_in         (dec_sop_in),
+        .dec_vld_in         (dec_vld_in),
+        .dec_dat_in         (dec_dat_in),
+        .dec_sop_out        (dec_sop_out),
+        .dec_vld_out        (dec_vld_out),
+        .dec_dat_out        (dec_dat_out),
+        .dec_rdy            (dec_rdy),
+        .dec_err            (dec_err),
+        .dec_err_flg_out    (dec_err_flg),
+        .dec_err_mag_out    (dec_err_mag)
+    );
+
+    // Error Injector (Khối chèn lỗi)
+    err_inj #(.WIDTH(10)) INJECTOR (
+        .clk            (clk),
+        .rst_n          (rst_n),
+        .mode_sw        (mode_sw), 
+        .sop_in         (enc_sop_out),
+        .vld_in         (enc_vld_out),
+        .dat_in         (enc_dat_out),
+        .sop_out        (dec_sop_in),
+        .vld_out        (dec_vld_in),
+        .dat_out        (dec_dat_in),
+        .inj_cnt        (inj_cnt),
+        .rd_addr        (disp_idx),
+        .rd_inj_pos     (rd_inj_pos),
+        .rd_inj_mag     (rd_inj_mag)
+    );
+
+    // Decoder Error Tracking RAM (Lưu lịch sử sửa lỗi)
+    dec_err_track_ram DEC_RAM (
+        .clk                (clk),
+        .rst_n              (rst_n),
+        .dec_vld_out        (dec_vld_out),
+        .dec_sop_out        (dec_sop_out),
+        .dec_err_flg        (dec_err_flg),
+        .dec_err_mag        (dec_err_mag),
+        .rd_addr            (disp_idx),
+        .corr_cnt           (corr_cnt),
+        .rd_pos             (rd_dec_pos),
+        .rd_mag             (rd_dec_mag)
+    );
+
+    // Hiển thị & Điều khiển KEY
+    disp_key_ctrl KEY_CTRL (
+        .clk            (clk),
+        .rst_n          (rst_n),
+        .disp_mode      (disp_mode),
+        .inj_cnt        (inj_cnt),
+        .key_nxt        (key_nxt),
+        .key_prv        (key_prv),
+        .disp_idx       (disp_idx)
+    );
+
+    // Hex Multiplexing (Trích xuất ra 6 LED 7 đoạn)
+    hex_mux HEX_DISP (
+        .disp_mode      (disp_mode),
+        .inj_cnt        (inj_cnt),
+        .corr_cnt       (corr_cnt),
+        .rd_inj_pos     (rd_inj_pos),
+        .rd_inj_mag     (rd_inj_mag),
+        .rd_dec_pos     (rd_dec_pos),
+        .rd_dec_mag     (rd_dec_mag),
+        .hex0           (hex_led[0]),
+        .hex1           (hex_led[1]),
+        .hex2           (hex_led[2]),
+        .hex3           (hex_led[3]),
+        .hex4           (hex_led[4]),
+        .hex5           (hex_led[5])
+    );
+
+    // LED Cờ Error cho Decoder
+    flop_r_nb #(.WIDTH(1)) Enc_Error_LED (
+        .clk   (clk),
+        .rst_n (rst_n),
+        .en    (enc_sop_out | enc_err),
+        .d     (enc_err), 
+        .q     (enc_err_led) 
+    );
+
+    
+    flop_r_nb #(.WIDTH(1)) Dec_Error_LED (
+        .clk   (clk),
+        .rst_n (rst_n),
+        .en    (dec_sop_out | dec_err),
+        .d     (dec_err), 
+        .q     (dec_err_led) 
+    );
+
+    // --- 4. I/O MAPPING ---
+    assign clk          = CLOCK_50;
+
+    assign rst_n        = KEY[0];
+    assign start_test   = ~KEY[1]; 
+    assign key_nxt      = KEY[2];
+    assign key_prv      = KEY[3];
+
+    assign mode_sw      = SW[2:0];
+    assign disp_mode    = SW[4:3]; 
+
+    assign LEDR[0]      = inj_cnt == corr_cnt;  // Cờ PASS
+    assign LEDR[1]      = enc_err_led;          // Cờ Error cho Encoder
+    assign LEDR[2]      = dec_err_led;          // Cờ Error cho Decoder
+    assign LEDR[9:8]    = disp_mode;
+
+    assign HEX0         = hex_led[0];
+    assign HEX1         = hex_led[1];
+    assign HEX2         = hex_led[2];
+    assign HEX3         = hex_led[3];
+    assign HEX4         = hex_led[4];
+    assign HEX5         = hex_led[5];
+
+endmodule: wrapper
+
+// =========================================================
 // Module 1: Hardware Data Generator (Message Pumper)
 // Bơm đúng K symbols vào Encoder khi có tín hiệu start_test
 // =========================================================
@@ -296,154 +478,3 @@ module hex_mux (
         .enc_out_2 (hex2)
     );
 endmodule: hex_mux
-
-// =========================================================
-// Module Chính: WRAPPER
-// Bọc tất cả các thành phần lại và map ra I/O thực tế của DE10-Standard
-// =========================================================
-module wrapper
-(
-    input  logic       CLOCK_50,
-    input  logic [9:0] SW,
-    input  logic [3:0] KEY,
-    
-    output logic [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5,
-    output logic [9:0] LEDR
-);
-
-    // --- 1. Clock & Reset ---
-    logic clk, rst_n, start_test;
-    assign clk = CLOCK_50;
-    assign rst_n = KEY[0];
-    assign start_test = ~KEY[1]; 
-    
-    // --- 2. Tín hiệu kết nối nội bộ ---
-    logic       enc_sop_in, enc_vld_in;
-    logic [9:0] enc_dat_in;
-    logic       enc_sop_out, enc_vld_out, enc_rdy, enc_err;
-    logic [9:0] enc_dat_out;
-    
-    logic       dec_sop_in, dec_vld_in;
-    logic [9:0] dec_dat_in;
-    logic       dec_sop_out, dec_vld_out, dec_rdy, dec_err, dec_err_flg;
-    logic [9:0] dec_err_mag;
-    logic [9:0] dec_dat_out;
-    
-    logic [9:0] inj_cnt;
-    logic [9:0] corr_cnt;
-    logic [9:0] rd_inj_pos, rd_inj_mag;
-    logic [9:0] rd_dec_pos, rd_dec_mag;
-    logic [9:0] disp_idx;
-    
-    logic [1:0] disp_mode;
-    assign disp_mode = SW[4:3]; // Gạt SW4 và SW3 để chọn mode hiển thị
-
-    // --- 3. Instantiations ---
-
-    // 3.1. Hardware Data Generator
-    msg_pumper #(.K(514)) PUMPER (
-        .clk        (clk),
-        .rst_n      (rst_n),
-        .start_test (start_test),
-        .enc_rdy    (enc_rdy),
-        .enc_sop_in (enc_sop_in),
-        .enc_vld_in (enc_vld_in),
-        .enc_dat_in (enc_dat_in)
-    );
-
-    // 3.2. Top-Level Codec (RS_ENC + RS_DEC)
-    top #(.WIDTH(10), .NSYM(30), .ORDER(15), .K(544)) RS_CODEC_TOP (
-        .clk                (clk),
-        .rst_n              (rst_n),
-        .enc_sop_in         (enc_sop_in),
-        .enc_vld_in         (enc_vld_in),
-        .enc_dat_in         (enc_dat_in),
-        .enc_sop_out        (enc_sop_out),
-        .enc_vld_out        (enc_vld_out),
-        .enc_dat_out        (enc_dat_out),
-        .enc_rdy            (enc_rdy),
-        .enc_err            (enc_err),
-        .dec_sop_in         (dec_sop_in),
-        .dec_vld_in         (dec_vld_in),
-        .dec_dat_in         (dec_dat_in),
-        .dec_sop_out        (dec_sop_out),
-        .dec_vld_out        (dec_vld_out),
-        .dec_dat_out        (dec_dat_out),
-        .dec_rdy            (dec_rdy),
-        .dec_err            (dec_err),
-        .dec_err_flg_out    (dec_err_flg),
-        .dec_err_mag_out    (dec_err_mag)
-    );
-
-    // 3.3. Error Injector (Khối chèn lỗi)
-    err_inj #(.WIDTH(10)) INJECTOR (
-        .clk            (clk),
-        .rst_n          (rst_n),
-        .mode_sw        (SW[2:0]), 
-        .sop_in         (enc_sop_out),
-        .vld_in         (enc_vld_out),
-        .dat_in         (enc_dat_out),
-        .sop_out        (dec_sop_in),
-        .vld_out        (dec_vld_in),
-        .dat_out        (dec_dat_in),
-        .inj_cnt        (inj_cnt),
-        .rd_addr        (disp_idx),
-        .rd_inj_pos     (rd_inj_pos),
-        .rd_inj_mag     (rd_inj_mag)
-    );
-
-    // 3.4. Decoder Error Tracking RAM (Lưu lịch sử sửa lỗi)
-    dec_err_track_ram DEC_RAM (
-        .clk                (clk),
-        .rst_n              (rst_n),
-        .dec_vld_out        (dec_vld_out),
-        .dec_sop_out        (dec_sop_out),
-        .dec_err_flg        (dec_err_flg),
-        .dec_err_mag        (dec_err_mag),
-        .rd_addr            (disp_idx),
-        .corr_cnt           (corr_cnt),
-        .rd_pos             (rd_dec_pos),
-        .rd_mag             (rd_dec_mag)
-    );
-
-    // 3.5. Hiển thị & Điều khiển KEY
-    disp_key_ctrl KEY_CTRL (
-        .clk            (clk),
-        .rst_n          (rst_n),
-        .disp_mode      (disp_mode),
-        .inj_cnt        (inj_cnt),
-        .key_nxt        (KEY[2]),
-        .key_prv        (KEY[3]),
-        .disp_idx       (disp_idx)
-    );
-
-    // 3.6. Hex Multiplexing (Trích xuất ra 6 LED 7 đoạn)
-    hex_mux HEX_DISP (
-        .disp_mode      (disp_mode),
-        .inj_cnt        (inj_cnt),
-        .corr_cnt       (corr_cnt),
-        .rd_inj_pos     (rd_inj_pos),
-        .rd_inj_mag     (rd_inj_mag),
-        .rd_dec_pos     (rd_dec_pos),
-        .rd_dec_mag     (rd_dec_mag),
-        .hex0           (HEX0),
-        .hex1           (HEX1),
-        .hex2           (HEX2),
-        .hex3           (HEX3),
-        .hex4           (HEX4),
-        .hex5           (HEX5)
-    );
-
-    // --- 4. LEDR STATUS MAPPING ---
-    assign LEDR[9:8] = disp_mode;
-    
-    // Thừa ra LED [7:4] 
-    assign LEDR[7:4] = 'b0;
-    
-    flop_r_nb        
-    assign LEDR[3] = dec_err; // Cờ Uncorrectable Error
-    assign LEDR[2] = dec_vld_out & ~dec_err & (inj_cnt == corr_cnt); // Cờ PASS
-    assign LEDR[1] = dec_rdy; // Decoder sẵn sàng
-    assign LEDR[0] = enc_rdy; // Encoder sẵn sàng
-
-endmodule: wrapper

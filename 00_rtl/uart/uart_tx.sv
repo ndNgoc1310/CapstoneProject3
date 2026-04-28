@@ -66,31 +66,31 @@ module uart_tx #(
     logic [WIDTH-1:0] fifo_q; // Data đầu ra của FIFO
 
     assign fifo_full  = (fifo_count == FIFO_DEPTH);
-    assign fifo_empty = (fifo_count == 0);
+    assign fifo_empty = (fifo_count == '0);
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            wr_ptr     <= 0;
-            rd_ptr     <= 0;
-            fifo_count <= 0;
-            fifo_q     <= 0;
+            wr_ptr     <= '0;
+            rd_ptr     <= '0;
+            fifo_count <= '0;
+            fifo_q     <= '0;
         end else begin
             // GHI VÀO FIFO khi luồng dữ liệu được chọn có data hợp lệ
             if (codec_valid && !fifo_full) begin
                 fifo_mem[wr_ptr] <= codec_data;
-                wr_ptr           <= wr_ptr + 1;
+                wr_ptr           <= wr_ptr + ($clog2(FIFO_DEPTH))'('d1);
             end
             
             // ĐỌC TỪ FIFO khi Gearbox yêu cầu
             if (fifo_rd_en && !fifo_empty) begin
                 fifo_q <= fifo_mem[rd_ptr];
-                rd_ptr <= rd_ptr + 1;
+                rd_ptr <= rd_ptr + ($clog2(FIFO_DEPTH))'('d1);
             end
 
             // Quản lý biến đếm số lượng để không bị xung đột (Race condition)
             case ({codec_valid && !fifo_full, fifo_rd_en && !fifo_empty})
-                2'b10: fifo_count <= fifo_count + 1; // Chỉ ghi
-                2'b01: fifo_count <= fifo_count - 1; // Chỉ đọc
+                2'b10: fifo_count <= fifo_count + ($clog2(FIFO_DEPTH+1))'('d1); // Chỉ ghi
+                2'b01: fifo_count <= fifo_count - ($clog2(FIFO_DEPTH+1))'('d1); // Chỉ đọc
                 // 2'b11: ghi và đọc đồng thời -> count giữ nguyên
                 // 2'b00: không làm gì -> count giữ nguyên
             endcase
@@ -109,7 +109,7 @@ module uart_tx #(
     logic [7:0]  tx_tdata;     // Dữ liệu 8-bit đã cắt xong, chuẩn bị đẩy sang UART
     logic        tx_tvalid;    // Lệnh yêu cầu UART truyền dữ liệu đi
     logic        tx_tready;    // Phản hồi từ UART báo đang rảnh
-
+	 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             buffer       <= '0;
@@ -124,25 +124,22 @@ module uart_tx #(
 
             // BƯỚC 1: Xử lý dữ liệu vừa rút từ FIFO ở nhịp Clock trước
             if (reading_fifo) begin
-                // Mặt nạ (mask) giúp giữ lại các bit cũ trong thùng, tránh bị đè dữ liệu rác
-                automatic logic [19:0] mask = (1 << bit_count) - 1;
-                
                 // Dịch các bit cũ lên cao 10 ô, ghép 10 bit mới từ FIFO vào phần thấp
-                buffer <= ((buffer & mask) << 10) | fifo_q;
-                bit_count <= bit_count + 10; // Tổng số bit tăng thêm 10
+                buffer <= (buffer << 10) | fifo_q;
+                bit_count <= bit_count + 5'd10; // Tổng số bit tăng thêm 10
                 
                 reading_fifo <= 1'b0; // Đã chốt xong hàng
             end 
             
             // BƯỚC 2: Nếu thùng có từ 8 bit trở lên VÀ mạch UART truyền đang rảnh rỗi
-            else if (bit_count >= 8) begin
+            else if (bit_count >= 5'd8) begin
                 if (tx_tready && !tx_tvalid) begin
                     // Cắt lấy 8 bit CỔ NHẤT (nằm ở vị trí cao nhất) để xuất ra UART
-                    tx_tdata  <= (buffer >> (bit_count - 8)) & 8'hFF;
+                    tx_tdata  <= (8)'((buffer >> (bit_count - 5'd8)) & 8'hFF);
                     tx_tvalid <= 1'b1; // Ra lệnh cho mạch UART TX truyền byte này đi
                     
                     // Trừ đi 8 bit đã xuất. Các bit thừa còn lại vẫn yên vị trong buffer
-                    bit_count <= bit_count - 8; 
+                    bit_count <= bit_count - 5'd8; 
                 end
             end 
             
@@ -164,20 +161,20 @@ module uart_tx #(
     logic [8:0]  tx_shift_reg; // Băng đạn chứa 8 bit data và 1 bit Stop
 
     // Báo bận khi vẫn còn bit đang truyền
-    assign tx_busy = (tx_bit_cnt != 0);
+    assign tx_busy = (tx_bit_cnt != 4'd0);
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            prescale_cnt <= 0;
-            tx_bit_cnt   <= 0;
-            tx_tready    <= 0;
+            prescale_cnt <= '0;
+            tx_bit_cnt   <= '0;
+            tx_tready    <= '0;
             txd          <= 1'b1; // Cáp UART khi rảnh rỗi luôn giữ ở mức CAO (1)
-            tx_shift_reg <= 0;
+            tx_shift_reg <= '0;
         end else begin
             if (prescale_cnt > 0) begin
                 // Tạo khoảng thời gian trễ giữa các bit để đạt tốc độ 115200bps
-                prescale_cnt <= prescale_cnt - 1;
-            end else if (tx_bit_cnt == 0) begin
+                prescale_cnt <= prescale_cnt - 16'd1;
+            end else if (tx_bit_cnt == 4'd0) begin
                 // Mạch UART rảnh rỗi, phát tín hiệu Ready lên báo cho Gearbox biết
                 tx_tready <= 1'b1;
                 txd       <= 1'b1; 
@@ -185,16 +182,16 @@ module uart_tx #(
                 // Nếu Gearbox gửi tín hiệu Valid kèm Data
                 if (tx_tvalid && tx_tready) begin
                     tx_tready    <= 1'b0; // Báo bận
-                    prescale_cnt <= PRESCALE - 1;
-                    tx_bit_cnt   <= 10;   // Bắt đầu quy trình truyền 10 nhịp (1 Start, 8 Data, 1 Stop)
+                    prescale_cnt <= 16'(PRESCALE) - 16'd1;
+                    tx_bit_cnt   <= 4'd10;   // Bắt đầu quy trình truyền 10 nhịp (1 Start, 8 Data, 1 Stop)
                     
                     txd          <= 1'b0; // Kéo đường dây xuống mức 0 để làm Start Bit
                     tx_shift_reg <= {1'b1, tx_tdata}; // Nạp 8-bit Data và 1-bit Stop vào băng đạn
                 end
             end else begin
                 // Đang trong tiến trình bắn từng bit
-                tx_bit_cnt   <= tx_bit_cnt - 1;
-                prescale_cnt <= PRESCALE - 1; // Nạp lại đồng hồ đếm ngược
+                tx_bit_cnt   <= tx_bit_cnt - 4'd1;
+                prescale_cnt <= 16'(PRESCALE) - 16'd1; // Nạp lại đồng hồ đếm ngược
                 
                 // Bắn bit thấp nhất (LSB) ra cáp truyền
                 txd          <= tx_shift_reg[0];

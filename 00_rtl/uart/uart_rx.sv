@@ -145,39 +145,39 @@ module uart_rx #(
 
     // Tính toán trước giá trị tiếp theo
     assign next_buffer = (buffer << 8) | fifo_mem[rd_ptr];
-    assign next_bit_count = bit_count + 8;
+    assign next_bit_count = bit_count + 5'd8;
 
     // Điều kiện rút FIFO: Không rỗng + Codec sẵn sàng + Chưa rút đủ số byte của gói
     assign fifo_rd_en = !fifo_empty && codec_ready && (in_byte_cnt < target_bytes);
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            buffer      <= '0;
-            bit_count   <= '0;
-            in_byte_cnt <= '0;
-            out_sym_cnt <= '0;
+            buffer      <= 16'd0;
+            bit_count   <= 5'd0;
+            in_byte_cnt <= 10'd0;
+            out_sym_cnt <= 10'd0;
             codec_valid <= 1'b0;
             codec_sop   <= 1'b0;
-            codec_data  <= '0;
+            codec_data  <= (WIDTH)'('d0);
         end else begin
             codec_valid <= 1'b0; // Mặc định hạ valid
             codec_sop   <= 1'b0; // Mặc định hạ SOP
 
             // TRƯỜNG HỢP 1: Đang rút byte từ FIFO để ghép bit
             if (fifo_rd_en) begin
-                in_byte_cnt <= in_byte_cnt + 1'b1;
+                in_byte_cnt <= in_byte_cnt + 10'd1;
 
                 // Nếu số bit gom được >= 10, ta có đủ 1 symbol để xuất
-                if (next_bit_count >= 10) begin
+                if (next_bit_count >= 5'd10) begin
                     codec_valid <= 1'b1;
-                    codec_sop   <= (out_sym_cnt == 0); // Kích SOP nếu là symbol đầu tiên
+                    codec_sop   <= (out_sym_cnt == 10'd0); // Kích SOP nếu là symbol đầu tiên
                     
                     // Cắt lấy đúng 10 bit cao nhất trong mảng bit đang có
                     // Cú pháp '-: 10' nghĩa là lấy từ vị trí (next_bit_count-1) lùi xuống 10 bit
                     codec_data  <= next_buffer[next_bit_count-1 -: 10]; 
                     
-                    out_sym_cnt <= out_sym_cnt + 1'b1;
-                    bit_count   <= next_bit_count - 10; // Trừ đi 10 bit đã dùng
+                    out_sym_cnt <= out_sym_cnt + 10'd1;
+                    bit_count   <= next_bit_count - 5'd10; // Trừ đi 10 bit đã dùng
                     buffer      <= next_buffer;         // Lưu các bit thừa còn lại cho lần sau
                 end else begin
                     // Chưa đủ 10 bit, tiếp tục cất đi chờ byte tiếp theo
@@ -189,24 +189,24 @@ module uart_rx #(
             // TRƯỜNG HỢP 2: Đã rút đủ byte của gói tin, tiến hành FLUSH (Chèn Zero-padding)
             // (Chỉ xảy ra ở Mode Encoder vì byte thứ 641 và 642 sẽ dư ra 6 bit)
             else if (in_byte_cnt == target_bytes) begin
-                if (bit_count > 0 && codec_ready) begin
+                if (bit_count > 5'd0 && codec_ready) begin
                     // Bơm nốt các bit thừa cuối cùng
                     codec_valid <= 1'b1;
-                    codec_sop   <= (out_sym_cnt == 0);
+                    codec_sop   <= (out_sym_cnt == 10'd0);
                     
                     // Dịch trái các bit thừa để phần đệm '0' nằm ở phía LSB (Zero-padding)
-                    codec_data  <= (buffer << (10 - bit_count)) & 10'h3FF;
+                    codec_data  <= (WIDTH)'((buffer << (5'd10 - bit_count)) & 10'h3FF);
                     
                     // Dọn dẹp sổ tay chuẩn bị cho gói tin tiếp theo
-                    out_sym_cnt <= 0;
-                    in_byte_cnt <= 0;
-                    bit_count   <= 0;
+                    out_sym_cnt <= '0;
+                    in_byte_cnt <= '0;
+                    bit_count   <= '0;
                 end 
-                else if (bit_count == 0) begin
+                else if (bit_count == 5'd0) begin
                     // Mode Decoder (680 bytes) chia hết hoàn toàn (544 symbols), không dư bit nào
                     // Trực tiếp dọn sổ tay chuẩn bị cho gói mới
-                    out_sym_cnt <= 0;
-                    in_byte_cnt <= 0;
+                    out_sym_cnt <= '0;
+                    in_byte_cnt <= '0;
                 end
             end
         end

@@ -163,6 +163,18 @@ module wrapper
     assign key_nxt      = KEY[2];
     assign key_prv      = KEY[3];
 
+    // case(mode_sw)
+    //     3'b000: target_err = 10'd0;
+    //     3'b001: target_err = 10'd5;
+    //     3'b010: target_err = 10'd15;    // Max correctable (burst)    
+    //     3'b011: target_err = 10'd15;    // Max correctable
+    //     3'b100: target_err = 10'd16;    // Uncorrectable
+    //     3'b101: target_err = 10'd100;   // Case 100 lỗi
+    //     3'b110: target_err = 10'd514;   // Hết Message
+    //     3'b111: target_err = 10'd544;   // Toàn bộ gói tin
+    //     default: target_err = 10'd0;
+    // endcase
+
     assign mode_sw      = SW[2:0];
     assign disp_mode    = SW[4:3]; 
 
@@ -331,15 +343,16 @@ module dec_err_track_ram (
                     corr_cnt                 <= corr_cnt + 10'd1;
                 end
             end
+
+            rd_pos <= dec_pos_mem[rev_rd_addr];
+            rd_mag <= dec_mag_mem[rev_rd_addr];
+
         end
     end
 
     // FIX: Đảo ngược Index đọc mảng để Error đầu tiên vào trùng với Error đầu tiên ra
     logic [9:0] rev_rd_addr;
     assign rev_rd_addr = (corr_cnt > 0) ? (corr_cnt - 10'd1 - rd_addr) : 10'd0;
-
-    assign rd_pos = dec_pos_mem[rev_rd_addr];
-    assign rd_mag = dec_mag_mem[rev_rd_addr];
 
 endmodule: dec_err_track_ram
 

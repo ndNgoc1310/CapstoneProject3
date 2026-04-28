@@ -139,6 +139,11 @@ module err_inj
                     inj_cnt <= inj_cnt + 10'd1;
                 end
             end
+
+            // Giao tiếp RAM cho Wrapper
+            rd_inj_pos <= pos_mem[rd_addr];
+            rd_inj_mag <= mag_mem[rd_addr];
+
         end
     end
 
@@ -147,8 +152,6 @@ module err_inj
     assign vld_out = vld_in;
     assign dat_out  = dat_in ^ noise; // Cộng GF(2) là XOR
     
-    // Giao tiếp RAM cho Wrapper
-    assign rd_inj_pos = pos_mem[rd_addr];
-    assign rd_inj_mag = mag_mem[rd_addr];
+
 
 endmodule: err_inj

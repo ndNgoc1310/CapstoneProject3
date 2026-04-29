@@ -13,12 +13,29 @@ module wrapper_uart (
     input  logic [9:0]  SW,        
 
     output logic [6:0]  HEX0, HEX1, HEX2, HEX3, HEX4, HEX5,
-    output logic [9:0]  LEDR       
+    output logic [9:0]  LEDR,
 
-    // --- Giao tiếp UART (Nối ra GPIO Header) ---
-    // Lưu ý: Bạn cần nối chân GPIO[0] vào dây TX của cáp USB-UART
-    // và chân GPIO[1] vào dây RX của cáp USB-UART.
-    // input  logic [35:0]  GPIO       
+    // --- HPS UART Physical Pins ---
+    inout  wire         HPS_UART_RX,
+    inout  wire         HPS_UART_TX,
+
+    // --- HPS DDR3 Physical Pins (BẮT BUỘC ĐỂ KHẮC PHỤC LỖI 35030) ---
+    output wire [12:0]  HPS_DDR3_ADDR,
+    output wire [2:0]   HPS_DDR3_BA,
+    output wire         HPS_DDR3_CAS_N,
+    output wire         HPS_DDR3_CKE,
+    output wire         HPS_DDR3_CK_N,
+    output wire         HPS_DDR3_CK_P,
+    output wire         HPS_DDR3_CS_N,
+    output wire         HPS_DDR3_DM,
+    inout  wire [7:0]   HPS_DDR3_DQ,
+    inout  wire         HPS_DDR3_DQS_N,
+    inout  wire         HPS_DDR3_DQS_P,
+    output wire         HPS_DDR3_ODT,
+    output wire         HPS_DDR3_RAS_N,
+    output wire         HPS_DDR3_RESET_N,
+    input  wire         HPS_DDR3_RZQ,
+    output wire         HPS_DDR3_WE_N   
 );
 
     // --- 1. Đặt tên gợi nhớ cho các chân I/O ---
@@ -30,10 +47,7 @@ module wrapper_uart (
     logic       key_nxt, key_prv;
     logic       enc_err_led, dec_err_led;
 
-    // Chân vật lý UART (Tham chiếu theo sơ đồ GPIO trên DE10-Standard)
-    logic uart_rxd, uart_txd;
-    // assign uart_rxd = GPIO[0]; // Chân nhận dữ liệu từ PC gửi xuống
-    // assign GPIO[1]  = uart_txd; // Chân truyền dữ liệu từ FPGA lên PC
+    logic       uart_rxd, uart_txd;
 
     // --- 2. Khai báo các dây tín hiệu nội bộ nối giữa UART và TOP ---
     logic       rx_codec_ready;
@@ -54,7 +68,68 @@ module wrapper_uart (
     logic [9:0] corr_cnt;
     logic [9:0] disp_idx;
 
-    // --- 3. Instantiations ---
+    // Khai báo mảng tín hiệu Loan I/O (mặc định của Cyclone V là 67 bit)
+    logic [66:0] loan_io_in;
+    logic [66:0] loan_io_out;
+    logic [66:0] loan_io_oe;
+
+    // --- 3. I/O MAPPING ---
+    assign clk          = CLOCK_50;
+
+    assign rst_n        = KEY[0];     // Nhấn nút KEY[0] để Reset toàn mạch
+    assign key_nxt      = KEY[2];
+    assign key_prv      = KEY[3];
+
+    assign disp_mode    = SW[4:3]; 
+    assign mode         = SW[9];     
+
+    assign LEDR[0]      = rx_codec_ready;
+    assign LEDR[1]      = enc_err_led;          // Cờ Error cho Encoder
+    assign LEDR[2]      = dec_err_led;          // Cờ Error cho Decoder
+    assign LEDR[9:8]    = disp_mode;
+    
+    assign HEX0         = hex_led[0];
+    assign HEX1         = hex_led[1];
+    assign HEX2         = hex_led[2];
+    assign HEX3         = hex_led[3];
+    assign HEX4         = hex_led[4];
+    assign HEX5         = hex_led[5]; 
+
+    assign uart_rxd         = loan_io_in[49];   // Lấy tín hiệu từ cáp USB chui qua HPS (loan_io_in) đưa vào module UART
+    assign loan_io_out[50]  = uart_txd;         // Lấy tín hiệu từ module UART đẩy ngược ra HPS (loan_io_out) để lên cáp USB
+    assign loan_io_oe[50]   = 1'b1;             // Cực kỳ quan trọng: Mở khóa xuất tín hiệu (Output Enable) cho chân số 50
+    
+    // --- 4. Instantiations ---
+
+    // Khởi tạo khối HPS
+    hps_uart_system u_hps (
+        .clk_clk                           (clk),
+        .reset_reset_n                     (rst_n),
+        .loan_io_in                        (loan_io_in),     
+        .loan_io_out                       (loan_io_out),    
+        .loan_io_oe                        (loan_io_oe),
+        .hps_io_hps_io_gpio_inst_LOANIO49  (HPS_UART_RX),
+        .hps_io_hps_io_gpio_inst_LOANIO50  (HPS_UART_TX),
+
+        // ĐỊNH TUYẾN CHÂN BỘ NHỚ HPS DDR3 RA TOP-LEVEL (KẾT NỐI ĐỦ BIT)
+        .memory_mem_a                      (HPS_DDR3_ADDR),     // Đầy đủ 15 bit
+        .memory_mem_ba                     (HPS_DDR3_BA),       // Đầy đủ 3 bit
+        .memory_mem_ck                     (HPS_DDR3_CK_P),
+        .memory_mem_ck_n                   (HPS_DDR3_CK_N),
+        .memory_mem_cke                    (HPS_DDR3_CKE),
+        .memory_mem_cs_n                   (HPS_DDR3_CS_N),
+        .memory_mem_ras_n                  (HPS_DDR3_RAS_N),
+        .memory_mem_cas_n                  (HPS_DDR3_CAS_N),
+        .memory_mem_we_n                   (HPS_DDR3_WE_N),
+        .memory_mem_reset_n                (HPS_DDR3_RESET_N),
+        .memory_mem_dq                     (HPS_DDR3_DQ),       // Đầy đủ 32 bit
+        .memory_mem_dqs                    (HPS_DDR3_DQS_P),    // Đầy đủ 4 bit
+        .memory_mem_dqs_n                  (HPS_DDR3_DQS_N),    // Đầy đủ 4 bit
+        .memory_mem_odt                    (HPS_DDR3_ODT),
+        .memory_mem_dm                     (HPS_DDR3_DM),       // Đầy đủ 4 bit
+        .memory_oct_rzqin                  (HPS_DDR3_RZQ)
+    );
+
 
     // Instantiate Module UART (Hệ thống truyền thông) ---
     uart #(
@@ -168,44 +243,17 @@ module wrapper_uart (
         .hex5           (hex_led[5])
     );
 
-    // LED Cờ Error cho Decoder
-    flop_r_nb #(.WIDTH(1)) Enc_Error_LED (
-        .clk   (clk),
-        .rst_n (rst_n),
-        .en    (enc_sop_out | enc_err),
-        .d     (enc_err), 
-        .q     (enc_err_led) 
-    );
-
-    
-    flop_r_nb #(.WIDTH(1)) Dec_Error_LED (
-        .clk   (clk),
-        .rst_n (rst_n),
-        .en    (dec_sop_out | dec_err),
-        .d     (dec_err), 
-        .q     (dec_err_led) 
-    );
-
-    // --- 4. I/O MAPPING ---
-    assign clk          = CLOCK_50;
-
-    assign rst_n        = KEY[0];     // Nhấn nút KEY[0] để Reset toàn mạch
-    assign key_nxt      = KEY[2];
-    assign key_prv      = KEY[3];
-
-    assign disp_mode    = SW[4:3]; 
-    assign mode         = SW[9];     
-
-    assign LEDR[1]      = enc_err_led;          // Cờ Error cho Encoder
-    assign LEDR[2]      = dec_err_led;          // Cờ Error cho Decoder
-    assign LEDR[9:8]    = disp_mode;
-    
-    assign HEX0         = hex_led[0];
-    assign HEX1         = hex_led[1];
-    assign HEX2         = hex_led[2];
-    assign HEX3         = hex_led[3];
-    assign HEX4         = hex_led[4];
-    assign HEX5         = hex_led[5]; 
+    // Bắt (Capture) và chốt trạng thái lỗi của Encoder và Decoder
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (~rst_n) begin
+            enc_err_led <= 1'b0;
+            dec_err_led <= 1'b0;
+        end else begin
+            // Cập nhật LED báo lỗi khi có cờ báo lỗi hoặc reset lại khi bắt đầu gói tin mới (SOP)
+            if (enc_sop_out | enc_err) enc_err_led <= enc_err;
+            if (dec_sop_out | dec_err) dec_err_led <= dec_err;
+        end
+    end
 
 endmodule: wrapper_uart
 
@@ -401,3 +449,4 @@ module hex_mux (
         .enc_out_2 (hex2)
     );
 endmodule: hex_mux
+

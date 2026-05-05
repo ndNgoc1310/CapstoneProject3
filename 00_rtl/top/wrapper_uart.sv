@@ -1,261 +1,297 @@
-`timescale 1ns / 1ps
-// =====================================================================
 // Module: wrapper_uart
-// Dự án: Reed-Solomon Codec RS(544, 514) Demo qua Hercules (UART)
-// Thiết bị: Terasic DE10-Standard (Cyclone V)
+// Dự án: Reed-Solomon Codec RS(544, 514) Demo qua External USB-to-TTL (Bypass HPS)
+// Giao tiếp: Thuần FPGA logic, dùng GPIO_RX và GPIO_TX (Giao tiếp Hercules)
 // =====================================================================
 
 module wrapper_uart (
-    // --- Clock & Reset ---
-    input  logic        CLOCK_50, 
-
-    input  logic [3:0]  KEY,       
-    input  logic [9:0]  SW,        
-
+    input  logic        CLOCK_50,
+    input  logic [3:0]  KEY,     // KEY: Rst, KEY[1]: Nxt, KEY[2]: Prv
+    input  logic [9:0]  SW,      // SW[3]: Mode (0=Enc, 1=Dec), SW[4:3]: Disp Mode
+    
     output logic [6:0]  HEX0, HEX1, HEX2, HEX3, HEX4, HEX5,
     output logic [9:0]  LEDR,
-
-    // --- HPS UART Physical Pins ---
-    inout  wire         HPS_UART_RX,
-    inout  wire         HPS_UART_TX,
-
-    // --- HPS DDR3 Physical Pins (BẮT BUỘC ĐỂ KHẮC PHỤC LỖI 35030) ---
-    output wire [12:0]  HPS_DDR3_ADDR,
-    output wire [2:0]   HPS_DDR3_BA,
-    output wire         HPS_DDR3_CAS_N,
-    output wire         HPS_DDR3_CKE,
-    output wire         HPS_DDR3_CK_N,
-    output wire         HPS_DDR3_CK_P,
-    output wire         HPS_DDR3_CS_N,
-    output wire         HPS_DDR3_DM,
-    inout  wire [7:0]   HPS_DDR3_DQ,
-    inout  wire         HPS_DDR3_DQS_N,
-    inout  wire         HPS_DDR3_DQS_P,
-    output wire         HPS_DDR3_ODT,
-    output wire         HPS_DDR3_RAS_N,
-    output wire         HPS_DDR3_RESET_N,
-    input  wire         HPS_DDR3_RZQ,
-    output wire         HPS_DDR3_WE_N   
+    
+    // --- Giao tiếp UART trực tiếp qua GPIO ---
+    inout  logic [35:0] GPIO 
 );
 
-    // --- 1. Đặt tên gợi nhớ cho các chân I/O ---
-    logic clk, rst_n, mode; 
+    // ==========================================
+    // 1. TÍN HIỆU ĐIỀU KHIỂN CHUNG
+    // ==========================================
+    logic clk, rst_n, mode;
+    assign clk   = CLOCK_50;
+    assign rst_n = KEY[0];
+    assign mode  = SW[9];
 
-    logic [1:0] disp_mode;
+    // ==========================================
+    // 2. KHỞI TẠO UART IP CORE
+    // ==========================================
+    logic [7:0] uart_rx_data, uart_tx_data;
+    logic       uart_rx_valid, uart_tx_wren;
+    logic       uart_tx_fifo_full;
 
-    logic [6:0] hex_led [5:0];
-    logic       key_nxt, key_prv;
-    logic       enc_err_led, dec_err_led;
-
-    logic       uart_rxd, uart_txd;
-
-    // --- 2. Khai báo các dây tín hiệu nội bộ nối giữa UART và TOP ---
-    logic       rx_codec_ready;
-    logic       rx_codec_sop;
-    logic       rx_codec_valid;
-    logic [9:0] rx_codec_data;
-
-    logic       enc_vld_out, dec_vld_out;
-    logic [9:0] enc_dat_out, dec_dat_out;
-    logic       enc_rdy, dec_rdy;
-    logic       enc_sop_out, dec_sop_out;
-    logic       enc_err, dec_err;
-    logic [9:0] dec_err_mag;
-    logic       dec_err_flg;
-
-    //
-    logic [9:0] rd_dec_pos, rd_dec_mag;
-    logic [9:0] corr_cnt;
-    logic [9:0] disp_idx;
-
-    // Khai báo mảng tín hiệu Loan I/O (mặc định của Cyclone V là 67 bit)
-    logic [66:0] loan_io_in;
-    logic [66:0] loan_io_out;
-    logic [66:0] loan_io_oe;
-
-    // --- 3. I/O MAPPING ---
-    assign clk          = CLOCK_50;
-
-    assign rst_n        = KEY[0];     // Nhấn nút KEY[0] để Reset toàn mạch
-    assign key_nxt      = KEY[2];
-    assign key_prv      = KEY[3];
-
-    assign disp_mode    = SW[4:3]; 
-    assign mode         = SW[9];     
-
-    assign LEDR[0]      = rx_codec_ready;
-    assign LEDR[1]      = enc_err_led;          // Cờ Error cho Encoder
-    assign LEDR[2]      = dec_err_led;          // Cờ Error cho Decoder
-    assign LEDR[9:8]    = disp_mode;
-    
-    assign HEX0         = hex_led[0];
-    assign HEX1         = hex_led[1];
-    assign HEX2         = hex_led[2];
-    assign HEX3         = hex_led[3];
-    assign HEX4         = hex_led[4];
-    assign HEX5         = hex_led[5]; 
-
-    assign uart_rxd         = loan_io_in[49];   // Lấy tín hiệu từ cáp USB chui qua HPS (loan_io_in) đưa vào module UART
-    assign loan_io_out[50]  = uart_txd;         // Lấy tín hiệu từ module UART đẩy ngược ra HPS (loan_io_out) để lên cáp USB
-    assign loan_io_oe[50]   = 1'b1;             // Cực kỳ quan trọng: Mở khóa xuất tín hiệu (Output Enable) cho chân số 50
-    
-    // --- 4. Instantiations ---
-
-    // Khởi tạo khối HPS
-    hps_uart_system u_hps (
-        .clk_clk                           (clk),
-        .reset_reset_n                     (rst_n),
-        .loan_io_in                        (loan_io_in),     
-        .loan_io_out                       (loan_io_out),    
-        .loan_io_oe                        (loan_io_oe),
-        .hps_io_hps_io_gpio_inst_LOANIO49  (HPS_UART_RX),
-        .hps_io_hps_io_gpio_inst_LOANIO50  (HPS_UART_TX),
-
-        // ĐỊNH TUYẾN CHÂN BỘ NHỚ HPS DDR3 RA TOP-LEVEL (KẾT NỐI ĐỦ BIT)
-        .memory_mem_a                      (HPS_DDR3_ADDR),     // Đầy đủ 15 bit
-        .memory_mem_ba                     (HPS_DDR3_BA),       // Đầy đủ 3 bit
-        .memory_mem_ck                     (HPS_DDR3_CK_P),
-        .memory_mem_ck_n                   (HPS_DDR3_CK_N),
-        .memory_mem_cke                    (HPS_DDR3_CKE),
-        .memory_mem_cs_n                   (HPS_DDR3_CS_N),
-        .memory_mem_ras_n                  (HPS_DDR3_RAS_N),
-        .memory_mem_cas_n                  (HPS_DDR3_CAS_N),
-        .memory_mem_we_n                   (HPS_DDR3_WE_N),
-        .memory_mem_reset_n                (HPS_DDR3_RESET_N),
-        .memory_mem_dq                     (HPS_DDR3_DQ),       // Đầy đủ 32 bit
-        .memory_mem_dqs                    (HPS_DDR3_DQS_P),    // Đầy đủ 4 bit
-        .memory_mem_dqs_n                  (HPS_DDR3_DQS_N),    // Đầy đủ 4 bit
-        .memory_mem_odt                    (HPS_DDR3_ODT),
-        .memory_mem_dm                     (HPS_DDR3_DM),       // Đầy đủ 4 bit
-        .memory_oct_rzqin                  (HPS_DDR3_RZQ)
+    uart_core u_uart (
+        .i_clk             (clk),
+        .i_rst_n           (rst_n),
+        .i_bclk_en         (1'b1),
+        .i_baud_divisor    (-16'd27),   // 50MHz / 115200
+        .i_parity_en       (1'b0),
+        .i_even_parity     (1'b0),
+        .i_dbg_lloopback   (1'b0),
+        .i_dbg_sloopback   (1'b0),
+        
+        .i_tx_en           (1'b1),
+        .i_tx_data         (uart_tx_data),
+        .i_tx_wren         (uart_tx_wren),
+        .o_tx_idle         (),
+        .o_tx_done         (),
+        .i_tx_fifo_clr     (1'b0),
+        .o_tx_fifo_empty   (),
+        .o_tx_fifo_full    (uart_tx_fifo_full),
+        .o_tx_fifo_level   (),
+        
+        .i_rx_en           (1'b1),
+        .i_rx_rden         (1'b1), // Liên tục rút data từ FIFO của core
+        .o_rx_data         (uart_rx_data),
+        .o_rx_idle         (),
+        .o_rx_done         (uart_rx_valid),
+        .i_rx_fifo_clr     (1'b0),
+        .o_rx_fifo_empty   (),
+        .o_rx_fifo_full    (),
+        .o_rx_fifo_level   (),
+        .o_rx_frame_error  (),
+        .o_rx_parity_error (),
+        .o_rx_data_is_zero (),
+        
+        .o_tx              (GPIO[0]),
+        .i_rx              (GPIO[1])
     );
 
+    // ==========================================
+    // 3. RX GEARBOX (8-bit to 10-bit) + FLUSH (Zero-padding)
+    // ==========================================
+    logic        rx_codec_sop, rx_codec_valid;
+    logic [9:0]  rx_codec_data;
+    
+    logic [39:0] rx_buffer;
+    logic [5:0]  rx_bit_cnt;
+    logic [9:0]  rx_byte_cnt;
+    logic [9:0]  rx_sym_cnt;
+    logic [9:0]  target_bytes;
+    
+    // Encoder cần 642 bytes, Decoder cần 680 bytes
+    assign target_bytes = (mode == 1'b0) ? 10'd642 : 10'd680;
 
-    // Instantiate Module UART (Hệ thống truyền thông) ---
-    uart #(
-        .CLK_FREQ(50_000_000), 
-        .BAUD_RATE(115200)
-    ) u_uart_system (
-        .clk              (clk),
-        .rst_n            (rst_n),
-        
-        // Vật lý
-        .rxd              (uart_rxd),
-        .txd              (uart_txd),
-        
-        // Điều khiển
-        .mode             (mode),
-        
-        // Kênh Nhận (UART -> Codec)
-        .rx_codec_ready   (rx_codec_ready),
-        .rx_codec_sop     (rx_codec_sop),
-        .rx_codec_valid   (rx_codec_valid),
-        .rx_codec_data    (rx_codec_data),
-        
-        // Kênh Truyền (Codec -> UART)
-        .tx_enc_valid_out (enc_vld_out),
-        .tx_enc_data_out  (enc_dat_out),
-        .tx_dec_valid_out (dec_vld_out),
-        .tx_dec_data_out  (dec_dat_out),
-        
-        .tx_busy          ()
-    );
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            rx_buffer      <= '0;
+            rx_bit_cnt     <= '0;
+            rx_byte_cnt    <= '0;
+            rx_sym_cnt     <= '0;
+            rx_codec_valid <= 0;
+            rx_codec_sop   <= 0;
+        end else begin
+            rx_codec_valid <= 0;
+            rx_codec_sop   <= 0;
+            
+            // Nếu có byte mới từ UART
+            if (uart_rx_valid) begin
+                rx_buffer   <= (rx_buffer << 8) | uart_rx_data;
+                rx_bit_cnt  <= rx_bit_cnt + 6'd8;
+                rx_byte_cnt <= (rx_byte_cnt == target_bytes - 1) ? 10'd0 : rx_byte_cnt + 10'd1;
+            end 
+            // Cắt 10 bit trên cùng đưa vào RS Codec
+            else if (rx_bit_cnt >= 6'd10) begin
+                rx_codec_data  <= (rx_buffer >> (rx_bit_cnt - 6'd10)) & 10'h3FF;
+                rx_bit_cnt     <= rx_bit_cnt - 6'd10;
+                rx_codec_valid <= 1'b1;
+                
+                if (rx_sym_cnt == 0) rx_codec_sop <= 1'b1;
+                rx_sym_cnt <= (rx_sym_cnt == ((mode == 0) ? 10'd513 : 10'd543)) ? 10'd0 : rx_sym_cnt + 10'd1;
+            end 
+            // Flush cho trường hợp 642 bytes (còn lẻ 6 bit, phải zero-pad 4 bit '0' để đẩy ra symbol 514)
+            else if (rx_byte_cnt == 0 && rx_bit_cnt > 0 && rx_bit_cnt < 6'd10) begin
+                rx_codec_data  <= (rx_buffer << (6'd10 - rx_bit_cnt)) & 10'h3FF;
+                rx_bit_cnt     <= 0;
+                rx_codec_valid <= 1'b1;
+                
+                if (rx_sym_cnt == 0) rx_codec_sop <= 1'b1;
+                rx_sym_cnt <= (rx_sym_cnt == ((mode == 0) ? 10'd513 : 10'd543)) ? 10'd0 : rx_sym_cnt + 10'd1;
+            end
+        end
+    end
 
-    // --- Logic phân luồng (MUX/DEMUX) cho tín hiệu Ready ---
-    // UART cần biết module nào (Enc hay Dec) đang sẵn sàng để rút data từ FIFO
-    assign rx_codec_ready = (mode == 1'b0) ? enc_rdy : dec_rdy;
+    // ==========================================
+    // 4. KẾT NỐI REED-SOLOMON CODEC (TOP)
+    // ==========================================
+    logic enc_rdy, dec_rdy, enc_err, dec_err, dec_err_flg;
+    logic enc_sop_out, dec_sop_out, enc_vld_out, dec_vld_out;
+    logic [9:0] enc_dat_out, dec_dat_out, dec_err_mag;
 
-    // Instantiate Module TOP (Bộ não RS Codec) 
+    logic        codec_vld_out;
+    logic [9:0]  codec_dat_out;
+
+    assign codec_vld_out = (mode == 0) ? enc_vld_out : dec_vld_out;
+    assign codec_dat_out = (mode == 0) ? enc_dat_out : dec_dat_out;
+
     top #(
         .WIDTH(10), .NSYM(30), .ORDER(15), .K(544)
     ) u_rs_codec_top (
-        .clk           (clk),
-        .rst_n         (rst_n),
+        .clk             (clk),
+        .rst_n           (rst_n),
         
-        // --- Giao diện Encoder ---
-        // Chỉ cấp Valid/SOP cho Encoder nếu đang ở mode 0
-        .enc_sop_in    ((mode == 1'b0) ? rx_codec_sop   : 1'b0),
-        .enc_vld_in    ((mode == 1'b0) ? rx_codec_valid : 1'b0),
-        .enc_dat_in    (rx_codec_data), // Data chung
+        .enc_sop_in      ((mode == 0) ? rx_codec_sop : 1'b0),
+        .enc_vld_in      ((mode == 0) ? rx_codec_valid : 1'b0),
+        .enc_dat_in      (rx_codec_data),
+        .enc_sop_out     (enc_sop_out),
+        .enc_vld_out     (enc_vld_out),
+        .enc_dat_out     (enc_dat_out),
+        .enc_rdy         (enc_rdy),
+        .enc_err         (enc_err),
         
-        .enc_sop_out   (enc_sop_out), 
-        .enc_vld_out   (enc_vld_out),
-        .enc_dat_out   (enc_dat_out),
-        .enc_rdy       (enc_rdy),
-        .enc_err       (enc_err), 
-        
-        // --- Giao diện Decoder ---
-        // Chỉ cấp Valid/SOP cho Decoder nếu đang ở mode 1
-        .dec_sop_in    ((mode == 1'b1) ? rx_codec_sop   : 1'b0),
-        .dec_vld_in    ((mode == 1'b1) ? rx_codec_valid : 1'b0),
-        .dec_dat_in    (rx_codec_data), // Data chung
-        
-        .dec_sop_out   (dec_sop_out), 
-        .dec_vld_out   (dec_vld_out),
-        .dec_dat_out   (dec_dat_out),
-        .dec_rdy       (dec_rdy),
-        .dec_err       (dec_err), 
-        
-        // Các tín hiệu giám sát lỗi (Monitor) có thể nối vào bộ hiển thị LED 7 đoạn nếu cần
+        .dec_sop_in      ((mode == 1) ? rx_codec_sop : 1'b0),
+        .dec_vld_in      ((mode == 1) ? rx_codec_valid : 1'b0),
+        .dec_dat_in      (rx_codec_data),
+        .dec_sop_out     (dec_sop_out),
+        .dec_vld_out     (dec_vld_out),
+        .dec_dat_out     (dec_dat_out),
+        .dec_rdy         (dec_rdy),
+        .dec_err         (dec_err),
         .dec_err_flg_out (dec_err_flg),
         .dec_err_mag_out (dec_err_mag)
     );
 
-    // Decoder Error Tracking RAM (Lưu lịch sử sửa lỗi)
-    dec_err_track_ram DEC_RAM (
-        .clk                (clk),
-        .rst_n              (rst_n),
-        .dec_vld_out        (dec_vld_out),
-        .dec_sop_out        (dec_sop_out),
-        .dec_err_flg        (dec_err_flg),
-        .dec_err_mag        (dec_err_mag),
-        .rd_addr            (disp_idx),
-        .corr_cnt           (corr_cnt),
-        .rd_pos             (rd_dec_pos),
-        .rd_mag             (rd_dec_mag)
-    );
-
-    // Hiển thị & Điều khiển KEY
-    disp_key_ctrl KEY_CTRL (
-        .clk            (clk),
-        .rst_n          (rst_n),
-        .disp_mode      (disp_mode),
-        .inj_cnt        (corr_cnt),
-        .key_nxt        (key_nxt),
-        .key_prv        (key_prv),
-        .disp_idx       (disp_idx)
-    );
-
-    // Hex Multiplexing (Trích xuất ra 6 LED 7 đoạn)
-    hex_mux HEX_DISP (
-        .disp_mode      (disp_mode),
-        .inj_cnt        ('0),
-        .corr_cnt       (corr_cnt),
-        .rd_inj_pos     ('0),
-        .rd_inj_mag     ('0),
-        .rd_dec_pos     (rd_dec_pos),
-        .rd_dec_mag     (rd_dec_mag),
-        .hex0           (hex_led[0]),
-        .hex1           (hex_led[1]),
-        .hex2           (hex_led[2]),
-        .hex3           (hex_led[3]),
-        .hex4           (hex_led[4]),
-        .hex5           (hex_led[5])
-    );
-
-    // Bắt (Capture) và chốt trạng thái lỗi của Encoder và Decoder
+    // ==========================================
+    // 5. TX FIFO (Chống tràn) & GEARBOX (10-bit to 8-bit)
+    // ==========================================
+    // RS Codec xả 544 symbol ở 50MHz, tạo hồ chứa 1024x10-bit để UART truyền dần
+    logic [9:0] tx_fifo_mem [0:1023];
+    logic [9:0] tx_fifo_wr_ptr;
+    logic [9:0] tx_fifo_rd_ptr;
+    logic [10:0] tx_fifo_count;
+    
+    logic       tx_fifo_rd_en;
+    logic [9:0] tx_fifo_q;
+    
     always_ff @(posedge clk or negedge rst_n) begin
-        if (~rst_n) begin
-            enc_err_led <= 1'b0;
-            dec_err_led <= 1'b0;
+        if (!rst_n) begin
+            tx_fifo_wr_ptr <= 0;
+            tx_fifo_rd_ptr <= 0;
+            tx_fifo_count  <= 0;
         end else begin
-            // Cập nhật LED báo lỗi khi có cờ báo lỗi hoặc reset lại khi bắt đầu gói tin mới (SOP)
+            if (codec_vld_out) begin
+                tx_fifo_mem[tx_fifo_wr_ptr] <= codec_dat_out;
+                tx_fifo_wr_ptr <= tx_fifo_wr_ptr + 10'd1;
+            end
+            if (tx_fifo_rd_en) begin
+                tx_fifo_rd_ptr <= tx_fifo_rd_ptr + 10'd1;
+            end
+            
+            if (codec_vld_out && !tx_fifo_rd_en)
+                tx_fifo_count <= tx_fifo_count + 11'd1;
+            else if (!codec_vld_out && tx_fifo_rd_en)
+                tx_fifo_count <= tx_fifo_count - 11'd1;
+        end
+
+        tx_fifo_q <= tx_fifo_mem[tx_fifo_rd_ptr];
+    end
+    
+    wire tx_fifo_empty = (tx_fifo_count == 0);
+
+    // TX Gearbox
+    logic [19:0] tx_buffer;
+    logic [4:0]  tx_bit_cnt;
+    logic        reading_fifo;
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            tx_buffer     <= '0;
+            tx_bit_cnt    <= '0;
+            reading_fifo  <= 1'b0;
+            tx_fifo_rd_en <= 1'b0;
+            uart_tx_wren  <= 1'b0;
+            uart_tx_data  <= '0;
+        end else begin
+            uart_tx_wren  <= 1'b0;
+            tx_fifo_rd_en <= 1'b0;
+            
+            if (reading_fifo) begin
+                tx_buffer    <= (tx_buffer << 10) | tx_fifo_q;
+                tx_bit_cnt   <= tx_bit_cnt + 5'd10;
+                reading_fifo <= 1'b0;
+            end
+            else if (tx_bit_cnt >= 5'd8) begin
+                // Nếu uart_core rảnh, cắt 8 bit ép xuống TX
+                if (!uart_tx_fifo_full && !uart_tx_wren) begin
+                    uart_tx_data <= (tx_buffer >> (tx_bit_cnt - 5'd8)) & 8'hFF;
+                    uart_tx_wren <= 1'b1;
+                    tx_bit_cnt   <= tx_bit_cnt - 5'd8;
+                end
+            end
+            else if (!tx_fifo_empty && !tx_fifo_rd_en) begin
+                tx_fifo_rd_en <= 1'b1;
+                reading_fifo  <= 1'b1;
+            end
+        end
+    end
+
+    // ==========================================
+    // 6. THEO DÕI VÀ HIỂN THỊ LỖI (TRACKING RAM & LED)
+    // ==========================================
+    logic [9:0] corr_cnt, disp_idx;
+    logic [9:0] rd_dec_pos, rd_dec_mag;
+    logic enc_err_led, dec_err_led;
+    
+    // RAM lưu vết lỗi từ Decoder (Submodule từ file wrapper.sv của bạn)
+    dec_err_track_ram DEC_RAM (
+        .clk         (clk),
+        .rst_n       (rst_n),
+        .dec_vld_out (dec_vld_out),
+        .dec_sop_out (dec_sop_out),
+        .dec_err_flg (dec_err_flg),
+        .dec_err_mag (dec_err_mag),
+        .rd_addr     (disp_idx),
+        .corr_cnt    (corr_cnt),
+        .rd_pos      (rd_dec_pos),
+        .rd_mag      (rd_dec_mag)
+    );
+
+    disp_key_ctrl KEY_CTRL (
+        .clk         (clk),
+        .rst_n       (rst_n),
+        .disp_mode   (SW[4:3]),
+        .inj_cnt     (corr_cnt),
+        .key_nxt     (KEY[2]),
+        .key_prv     (KEY[3]),
+        .disp_idx    (disp_idx)
+    );
+
+    hex_mux HEX_DISP (
+        .disp_mode   (SW[4:3]),
+        .inj_cnt     (10'd0), 
+        .corr_cnt    (corr_cnt),
+        .rd_inj_pos  (10'd0),
+        .rd_inj_mag  (10'd0),
+        .rd_dec_pos  (rd_dec_pos),
+        .rd_dec_mag  (rd_dec_mag),
+        .hex0 (HEX0), .hex1 (HEX1), .hex2 (HEX2),
+        .hex3 (HEX3), .hex4 (HEX4), .hex5 (HEX5)
+    );
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            enc_err_led <= 0;
+            dec_err_led <= 0;
+        end else begin
             if (enc_sop_out | enc_err) enc_err_led <= enc_err;
             if (dec_sop_out | dec_err) dec_err_led <= dec_err;
         end
     end
 
-endmodule: wrapper_uart
+    // LEDR hiển thị Mode, Cờ Lỗi và trạng thái Sẵn sàng của bộ Gearbox
+    assign LEDR = {SW[4:3], 5'b0, dec_err_led, enc_err_led, mode};
+
+endmodule
 
 // =========================================================
 // Module 1: DECODER ERROR TRACKING RAM

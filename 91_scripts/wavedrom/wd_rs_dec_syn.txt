@@ -1,0 +1,50 @@
+// --- Packet Ingestion & Fdbk Masking --------------------
+
+{
+  "signal": [
+    { "name": "clk", "wave": "p......" },
+    { "name": "rst_n", "wave": "1......" },
+    { "name": "state_curr", "wave": "=.=....", "data": ["IDLE", "CALC"] },
+    {},
+    { "name": "sop_in", "wave": "010...." },
+    { "name": "vld_in", "wave": "01....." },
+    { "name": "dat_in", "wave": "x======", "data": ["R_543", "R_542", "R_541", "R_540", "R_539", "R_538"] },
+    {},
+    { "name": "cnt_out", "wave": "=.=====", "data": ["0", "1", "2", "3", "4", "5"] },
+    { "name": "cnt_end", "wave": "0......" },
+    {},
+    { "name": "ctrl", "wave": "0.1...." },
+    { "name": "reg_en", "wave": "01....." },
+    { "name": "sys_rdy", "wave": "10....." },
+    { "name": "sys_err", "wave": "0......" },
+    {},
+    { "name": "vld_out", "wave": "0......" },
+    { "name": "syn_out[i]", "wave": "0......" }
+  ],
+  "config": { "hscale": 2 }
+}
+
+// --- End of Cycle & Final Syndrome Extraction --------------------
+
+{
+  "signal": [
+    { "name": "clk", "wave": "p......" },
+    { "name": "rst_n", "wave": "1......" },
+    { "name": "state_curr", "wave": "=..==..", "data": ["CALC", "DONE", "IDLE"] },
+    {},
+    { "name": "vld_in", "wave": "1...0.." },
+    { "name": "dat_in", "wave": "====x..", "data": ["R_3", "R_2", "R_1", "R_0"] },
+    {},
+    { "name": "cnt_out", "wave": "=====..", "data": ["540", "541", "542", "543", "0"] },
+    { "name": "cnt_end", "wave": "0.1.0.." },
+    {},
+    { "name": "ctrl", "wave": "1...0.." },
+    { "name": "reg_en", "wave": "1...0.." },
+    { "name": "sys_rdy", "wave": "0..1..." },
+    { "name": "sys_err", "wave": "0......" },
+    {},
+    { "name": "vld_out", "wave": "0..10.." },
+    { "name": "syn_out[i]", "wave": "0..=0..", "data": ["S_i"] }
+  ],
+  "config": { "hscale": 2 }
+}

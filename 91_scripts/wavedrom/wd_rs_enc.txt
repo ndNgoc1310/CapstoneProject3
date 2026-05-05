@@ -1,0 +1,82 @@
+// --- Packet Ingestion & Mealy Reaction --------------
+
+{
+  "signal": [
+    { "name": "clk", "wave": "p......" },
+    { "name": "rst_n", "wave": "1......" },
+    { "name": "state_curr", "wave": "==.....", "data": ["IDLE", "MSG"] },
+    {},
+    { "name": "sop_in", "wave": "010...." },
+    { "name": "vld_in", "wave": "01....." },
+    { "name": "dat_in", "wave": "x======", "data": ["M_513", "M_512", "M_511", "M_510", "M_509", "M_508"] },
+    {},
+    { "name": "cnt_out", "wave": "=.=====", "data": ["0", "1", "2", "3", "4", "5"] },
+    { "name": "cnt_par", "wave": "0......" },
+    { "name": "cnt_end", "wave": "0......" },
+    {},
+    { "name": "ctrl", "wave": "1......" },
+    { "name": "reg_en", "wave": "01....." },
+    { "name": "sys_rdy", "wave": "10....." },
+    { "name": "sys_err", "wave": "0......" },
+    {},
+    { "name": "sop_out", "wave": "010...." },
+    { "name": "vld_out", "wave": "01....." },
+    { "name": "dat_out", "wave": "x======", "data": ["M_513", "M_512", "M_511", "M_510", "M_509", "M_508"] }
+ ],
+  "config" : { "hscale" : 2 }
+}
+
+// --- Message-to-Parity Transition -----------------
+
+{
+  "signal": [
+    { "name": "clk", "wave": "p......" },
+    { "name": "rst_n", "wave": "1......" },
+    { "name": "state_curr", "wave": "=..=...", "data": ["MSG", "PARITY"] },
+    {},
+    { "name": "sop_in", "wave": "0......" },
+    { "name": "vld_in", "wave": "1..0..." },
+    { "name": "dat_in", "wave": "===xxxx", "data": ["M_2", "M_1", "M_0"] },
+    {},
+    { "name": "cnt_out", "wave": "=======", "data": ["511", "512", "513", "514", "515", "516", "517"] },
+    { "name": "cnt_par", "wave": "0.10101" },
+    { "name": "cnt_end", "wave": "0......" },
+    {},
+    { "name": "ctrl", "wave": "1..0..." },
+    { "name": "reg_en", "wave": "1......" },
+    { "name": "sys_rdy", "wave": "0......" },
+    { "name": "sys_err", "wave": "0......" },
+    {},
+    { "name": "sop_out", "wave": "0......" },
+    { "name": "vld_out", "wave": "1......" },
+    { "name": "dat_out", "wave": "=======", "data": ["M_2", "M_1", "M_0", "P_29", "P_28", "P_27", "P_26"] }
+ ],
+  "config" : { "hscale" : 2 }
+}
+
+// --- End of Cycle & Reset --------------------
+
+{
+  "signal": [
+    { "name": "clk", "wave": "p......" },
+    { "name": "rst_n", "wave": "1......" },
+    { "name": "state_curr", "wave": "=.==...", "data": ["PARITY", "DONE", "IDLE"] },
+    {},
+    { "name": "vld_in", "wave": "0......" },
+    { "name": "dat_in", "wave": "x......" },
+    {},
+    { "name": "cnt_out", "wave": "=======", "data": ["541", "542", "543", "0", "0", "0", "0"] },
+    { "name": "cnt_par", "wave": "1010..." },
+    { "name": "cnt_end", "wave": "01.0..." },
+    {},
+    { "name": "ctrl", "wave": "0..1..." },
+    { "name": "reg_en", "wave": "1..0..." },
+    { "name": "sys_rdy", "wave": "0.1...." },
+    { "name": "sys_err", "wave": "0......" },
+    {},
+    { "name": "sop_out", "wave": "0......" },
+    { "name": "vld_out", "wave": "1..0..." },
+    { "name": "dat_out", "wave": "===x...", "data": ["P_2", "P_1", "P_0"] }
+ ],
+  "config" : { "hscale" : 2 }
+}

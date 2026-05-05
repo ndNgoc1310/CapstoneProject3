@@ -1,0 +1,37 @@
+{
+  "signal": [
+    { "name": "clk", "wave": "p......" },
+    { "name": "rst_n", "wave": "1......" },
+    {},
+    { "name": "push_sop", "wave": "010...." },
+    { "name": "push_en", "wave": "01....." },
+    { "name": "dat_in", "wave": "x======", "data": ["R_543", "R_542", "R_541", "R_540", "R_539", "R_538"] },
+    {},
+    { "name": "pop_sop", "wave": "0......" },
+    { "name": "pop_en", "wave": "0......" },
+    {},
+    { "name": "vld_out", "wave": "0......" },
+    { "name": "dat_out", "wave": "x......" }
+  ],
+  "config": { "hscale": 2 }
+}
+
+//-----------------------
+
+{
+  "signal": [
+    { "name": "clk", "wave": "p......" },
+    { "name": "rst_n", "wave": "1......" },
+    {},
+    { "name": "push_sop", "wave": "0......" },
+    { "name": "push_en", "wave": "0......" },
+    { "name": "dat_in", "wave": "x......" },
+    {},
+    { "name": "pop_sop", "wave": "010...." },
+    { "name": "pop_en", "wave": "01....." },
+    {},
+    { "name": "vld_out", "wave": "0.1...." },
+    { "name": "dat_out", "wave": "x.=====", "data": ["R_0", "R_1", "R_2", "R_3", "R_4"] }
+  ],
+  "config": { "hscale": 2 }
+}

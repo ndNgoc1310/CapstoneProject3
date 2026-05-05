@@ -1,0 +1,57 @@
+{
+  "signal": [
+    { "name": "clk", "wave": "p......" },
+    { "name": "rst_n", "wave": "1......" },
+    { "name": "state_curr", "wave": "=.==...", "data": ["IDLE", "CALC1", "CALC2"] },
+    {},
+    { "name": "vld_in", "wave": "010...." },
+    { "name": "lam_in[i]", "wave": "x=x....", "data": ["Λ_i"] },
+    { "name": "ome_in[i]", "wave": "x=x....", "data": ["Ω_i"] },
+    { "name": "len_in", "wave": "x=x....", "data": ["L"] },
+    {},
+    { "name": "init", "wave": "010...." },
+    { "name": "reg_en", "wave": "01....." },
+    { "name": "cnt_out", "wave": "x.=====", "data": ["0", "1", "2", "3", "4"] },
+    { "name": "cnt_end", "wave": "0......" },
+    {},
+    { "name": "l_val", "wave": "x.=====", "data": ["Λ(α^{0})", "Λ(α^{-1})", "Λ(α^{-2})", "Λ(α^{-3})", "Λ(α^{-4})"] },
+    { "name": "err_flg", "wave": "0......" },
+    { "name": "l_val_der", "wave": "x.=====", "data": ["Λ'(α^{0})", "Λ'(α^{-1})", "Λ'(α^{-2})", "Λ'(α^{-3})", "Λ'(α^{-4})"] },
+    { "name": "o_val", "wave": "x.=====", "data": ["Ω(α^{0})", "Ω(α^{-1})", "Ω(α^{-2})", "Ω(α^{-3})", "Ω(α^{-4})"] },
+    {},
+    { "name": "sop_out", "wave": "0.10..." },
+    { "name": "vld_out", "wave": "0.1...." },
+    { "name": "sys_rdy", "wave": "10....." }
+  ],
+  "config": { "hscale": 2 }
+}
+
+// ----------------------
+
+{
+  "signal": [
+    { "name": "clk", "wave": "p......" },
+    { "name": "rst_n", "wave": "1......" },
+    { "name": "state_curr", "wave": "=..==..", "data": ["CALC2", "DONE", "IDLE"] },
+    {},
+    { "name": "vld_in", "wave": "0......" },
+    { "name": "lam_in[i]", "wave": "x......" },
+    { "name": "ome_in[i]", "wave": "x......" },
+    { "name": "len_in", "wave": "x......" },
+    {},
+    { "name": "init", "wave": "0......" },
+    { "name": "reg_en", "wave": "1..0..." },
+    { "name": "cnt_out", "wave": "====...", "data": ["540", "541", "542", "543"] },
+    { "name": "cnt_end", "wave": "0.1...." },
+    {},
+    { "name": "l_val", "wave": "====...", "data": ["Λ(α^{-540})", "0", "Λ(α^{-542})", "Λ(α^{-543})"] },
+    { "name": "err_flg", "wave": "010...." },
+    { "name": "l_val_der", "wave": "====...", "data": ["Λ'(α^{-540})", "Λ'(α^{-541})", "Λ'(α^{-542})", "Λ'(α^{-543})"] },
+    { "name": "o_val", "wave": "====...", "data": ["Ω(α^{-540})", "Ω(α^{-541})", "Ω(α^{-542})", "Ω(α^{-543})"] },
+    {},
+    { "name": "sop_out", "wave": "0......" },
+    { "name": "vld_out", "wave": "1...0.." },
+    { "name": "sys_rdy", "wave": "0..1..." }
+  ],
+  "config": { "hscale": 2 }
+}

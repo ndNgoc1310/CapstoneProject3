@@ -1,0 +1,101 @@
+{
+  "signal": [
+    { "name": "clk", "wave": "p......" },
+    { "name": "rst_n", "wave": "1......" },
+    { "name": "state_curr", "wave": "=.=....", "data": ["IDLE", "CALC"] },
+    {},
+    { "name": "vld_in", "wave": "010...." },
+    { "name": "syn_in[i]", "wave": "===....", "data": ["0", "S_i", "0"] },
+    {},
+    { "name": "init", "wave": "010...." },
+    { "name": "reg_en", "wave": "01....." },
+    { "name": "cnt_out", "wave": "x.=====", "data": ["0", "1", "2", "3", "4"] },
+    {},
+    { "name": "syn_wdw[4]", "wave": "x.=...=", "data": ["0", "S_0"] },
+    { "name": "syn_wdw[3]", "wave": "x.=..==", "data": ["0", "S_0", "S_1"] },
+    { "name": "syn_wdw[2]", "wave": "x.=.===", "data": ["0", "S_0", "S_1", "S_2"] },
+    { "name": "syn_wdw[1]", "wave": "x.=====", "data": ["0", "S_0", "S_1", "S_2", "S_3"] },
+    { "name": "syn_wdw[0]", "wave": "x.=====", "data": ["S_0", "S_1", "S_2", "S_3", "S_4"] },
+    {},
+    { "name": "len_out", "wave": "x.=x...", "data": ["0"] },
+    { "name": "lam_out[i]", "wave": "x.=x...", "data": ["1"] },
+    { "name": "ome_out[i]", "wave": "x.=x...", "data": ["S_i"] },
+    {},
+    { "name": "len_ge", "wave": "x.0x..." },
+    { "name": "dis_neq_0", "wave": "x......" },
+    { "name": "delta", "wave": "x......" },
+    {},
+    { "name": "vld_out", "wave": "0......" },
+    { "name": "sys_rdy", "wave": "10....." }
+  ],
+  "config": { "hscale": 2 }
+}
+
+// ------------------------
+
+{
+  "signal": [
+    { "name": "clk", "wave": "p......" },
+    { "name": "rst_n", "wave": "1......" },
+    { "name": "state_curr", "wave": "=......", "data": ["CALC"] },
+    {},
+    { "name": "vld_in", "wave": "0......" },
+    { "name": "syn_in[i]", "wave": "x......" },
+    {},
+    { "name": "init", "wave": "0......" },
+    { "name": "reg_en", "wave": "1......" },
+    { "name": "cnt_out", "wave": "x......" },
+    {},
+    { "name": "syn_wdw[4]", "wave": "x......" },
+    { "name": "syn_wdw[3]", "wave": "x......" },
+    { "name": "syn_wdw[2]", "wave": "x......" },
+    { "name": "syn_wdw[1]", "wave": "x......" },
+    { "name": "syn_wdw[0]", "wave": "x......" },
+    {},
+    { "name": "len_out", "wave": "x...=x.", "data": ["K − L + 1"] },
+    { "name": "lam_out[i]", "wave": "x...=x.", "data": ["Λ new"] },
+    { "name": "ome_out[i]", "wave": "x...=x.", "data": ["Ω new"] },
+    {},
+    { "name": "len_ge", "wave": "x..0x.." },
+    { "name": "dis_neq_0", "wave": "x..1x.." },
+    { "name": "delta", "wave": "x..1x.." },
+    {},
+    { "name": "vld_out", "wave": "0......" },
+    { "name": "sys_rdy", "wave": "0......" }
+  ],
+  "config": { "hscale": 2 }
+}
+
+// -------------------------
+
+{
+  "signal": [
+    { "name": "clk", "wave": "p......" },
+    { "name": "rst_n", "wave": "1......" },
+    { "name": "state_curr", "wave": "=..==..", "data": ["CALC", "DONE", "IDLE"] },
+    {},
+    { "name": "vld_in", "wave": "0......" },
+    { "name": "init", "wave": "0......" },
+    { "name": "reg_en", "wave": "1..0..." },
+    { "name": "cnt_out", "wave": "====...", "data": ["27", "28", "29", "30"] },
+    { "name": "cnt_end", "wave": "0.10..." },
+    {},
+    { "name": "syn_wdw[4]", "wave": "====...", "data": ["S_23", "S_24", "S_25", "S_26"] },
+    { "name": "syn_wdw[3]", "wave": "====...", "data": ["S_24", "S_25", "S_26", "S_27"] },
+    { "name": "syn_wdw[2]", "wave": "====...", "data": ["S_25", "S_26", "S_27", "S_28"] },
+    { "name": "syn_wdw[1]", "wave": "====...", "data": ["S_26", "S_27", "S_28", "S_29"] },
+    { "name": "syn_wdw[0]", "wave": "====...", "data": ["S_27", "S_28", "S_29", "0"] },
+    {},
+    { "name": "len_ge", "wave": "x......" },
+    { "name": "dis_neq_0", "wave": "x......" },
+    { "name": "delta", "wave": "x......" },
+    {},
+    { "name": "len_out", "wave": "x..=...", "data": ["L"] },
+    { "name": "lam_out[i]", "wave": "x..=...", "data": ["Λ_i"] },
+    { "name": "ome_out[i]", "wave": "x..=...", "data": ["Ω_i"] },
+    {},
+    { "name": "vld_out", "wave": "0..10.." },
+    { "name": "sys_rdy", "wave": "0..1..." }
+  ],
+  "config": { "hscale": 2 }
+}

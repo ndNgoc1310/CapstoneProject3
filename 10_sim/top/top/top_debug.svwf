@@ -80,6 +80,10 @@ set id [waveform add -signals [subst  {
 	} ]]
 waveform format $id -color #ff9900 -namecolor #ff9900
 set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.ctrl}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
 	{[format {top_tb.DUT.Encoder.sop_out}]}
 	} ]]
 waveform format $id -color #ff9900 -namecolor #ff9900
@@ -129,6 +133,10 @@ set id [waveform add -signals [subst  {
 waveform format $id -radix %d -color #ff00ff -namecolor #ff00ff
 set id [waveform add -signals [subst  {
 	{[format {top_tb.DUT.Decoder.Syn.Counter.cnt_end}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Decoder.Syn.ctrl}]}
 	} ]]
 waveform format $id -color #ff00ff -namecolor #ff00ff
 set id [waveform add -signals [subst  {
@@ -278,7 +286,6 @@ set id2 [lindex [waveform hierarchy content $id] 28]
 waveform format $id2 -radix %d
 set id2 [lindex [waveform hierarchy content $id] 29]
 waveform format $id2 -radix %d
-waveform hierarchy collapse $id
 set id [waveform add -signals [subst  {
 	{[format {top_tb.DUT.Decoder.Kes.vld_in}]}
 	} ]]
@@ -750,4 +757,4 @@ set id [waveform add -signals [subst  {
 	} ]]
 waveform format $id -radix %d -color #ff00ff -namecolor #ff00ff
 
-waveform xview limits 17053.456ns 17484.56ns
+waveform xview limits 459.654ns 813.23ns

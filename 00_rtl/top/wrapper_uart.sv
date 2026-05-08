@@ -250,28 +250,39 @@ module uart_rx_gearbox (
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            rx_buffer    <= '0;
-            rx_bit_cnt   <= '0;
-            rx_byte_cnt  <= '0;
-            gbx_rx_valid <= 0;
-            gbx_rx_data  <= 0;
-        end else begin
-            gbx_rx_valid <= 0;
-            
+            gbx_rx_valid    <= 0;
+            gbx_rx_data     <= '0;
+            rx_buffer       <= '0;
+            rx_bit_cnt      <= '0;
+            rx_byte_cnt     <= '0;
+        end else begin            
             if (uart_rx_valid) begin
-                rx_buffer   <= (rx_buffer << 8) | uart_rx_data;
-                rx_bit_cnt  <= rx_bit_cnt + 6'd8;
-                rx_byte_cnt <= (rx_byte_cnt == target_bytes - 1) ? 10'd0 : rx_byte_cnt + 10'd1;
+                gbx_rx_valid    <= 0;
+                gbx_rx_data     <= '0;
+                rx_buffer       <= (rx_buffer << 8) | uart_rx_data;
+                rx_bit_cnt      <= rx_bit_cnt + 6'd8;
+                rx_byte_cnt     <= rx_byte_cnt + 10'd1;
             end 
             else if (rx_bit_cnt >= 6'd10) begin
-                gbx_rx_data  <= (rx_buffer >> (rx_bit_cnt - 6'd10)) & 10'h3FF;
-                rx_bit_cnt   <= rx_bit_cnt - 6'd10;
-                gbx_rx_valid <= 1'b1;
+                gbx_rx_valid    <= 1'b1;
+                gbx_rx_data     <= 10'((rx_buffer >> (rx_bit_cnt - 6'd10)) & 40'h3FF);
+                rx_buffer       <= rx_buffer;
+                rx_bit_cnt      <= rx_bit_cnt - 6'd10;
+                rx_byte_cnt     <= rx_byte_cnt;
             end 
-            else if (rx_byte_cnt == 0 && rx_bit_cnt > 0 && rx_bit_cnt < 6'd10) begin
-                gbx_rx_data  <= (rx_buffer << (6'd10 - rx_bit_cnt)) & 10'h3FF;
-                rx_bit_cnt   <= 0;
-                gbx_rx_valid <= 1'b1;
+            else if (rx_byte_cnt == target_bytes) begin
+                gbx_rx_valid    <= 1'b1;
+                gbx_rx_data     <= 10'((rx_buffer << (6'd10 - rx_bit_cnt)) & 40'h3FF);
+                rx_buffer       <= '0;
+                rx_bit_cnt      <= '0;
+                rx_byte_cnt     <= '0;
+            end
+            else begin
+                gbx_rx_valid    <= 1'b0;
+                gbx_rx_data     <= '0;
+                rx_buffer       <= rx_buffer;
+                rx_bit_cnt      <= rx_bit_cnt;
+                rx_byte_cnt     <= rx_byte_cnt;
             end
         end
     end
@@ -406,14 +417,13 @@ module uart_tx_buffer (
     output logic       uart_tx_wren,
     output logic [7:0] uart_tx_data
 );
+    // --- 1. FIFO Memory (Giữ nguyên logic cũ nhưng tách biệt) ---
     logic [9:0]  tx_fifo_mem [0:1023];
-    logic [9:0]  tx_fifo_wr_ptr;
-    logic [9:0]  tx_fifo_rd_ptr;
+    logic [9:0]  tx_fifo_wr_ptr, tx_fifo_rd_ptr;
     logic [10:0] tx_fifo_count;
-    logic        tx_fifo_rd_en;
-    logic [9:0]  tx_fifo_q;
+    logic        fifo_rd_signal;
+    logic [9:0]  fifo_data_out;
 
-    // Viết data vào FIFO
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             tx_fifo_wr_ptr <= 0;
@@ -424,56 +434,83 @@ module uart_tx_buffer (
                 tx_fifo_mem[tx_fifo_wr_ptr] <= codec_dat_out;
                 tx_fifo_wr_ptr <= tx_fifo_wr_ptr + 10'd1;
             end
-            if (tx_fifo_rd_en) begin
+            if (fifo_rd_signal) begin
                 tx_fifo_rd_ptr <= tx_fifo_rd_ptr + 10'd1;
             end
-            
-            if (codec_vld_out && !tx_fifo_rd_en)
-                tx_fifo_count <= tx_fifo_count + 11'd1;
-            else if (!codec_vld_out && tx_fifo_rd_en)
-                tx_fifo_count <= tx_fifo_count - 11'd1;
+            // Cập nhật đếm kho
+            if (codec_vld_out && !fifo_rd_signal)       tx_fifo_count <= tx_fifo_count + 11'd1;
+            else if (!codec_vld_out && fifo_rd_signal)  tx_fifo_count <= tx_fifo_count - 11'd1;
         end
-        tx_fifo_q <= tx_fifo_mem[tx_fifo_rd_ptr];
     end
-    
-    wire tx_fifo_empty = (tx_fifo_count == 0);
+    assign fifo_data_out = tx_fifo_mem[tx_fifo_rd_ptr];
 
-    // TX Gearbox
-    logic [19:0] tx_buffer;
-    logic [4:0]  tx_bit_cnt;
-    logic        reading_fifo;
+    // --- 2. TX Gearbox FSM (Giải quyết triệt để việc đọc lặp) ---
+    typedef enum logic [1:0] {IDLE, FETCH, PROC} state_t;
+    state_t state_cur, state_nxt;
 
+    logic [19:0] shift_reg;
+    logic [4:0]  bit_left;
+    logic [7:0]  raw_byte;
+
+    // Khối 1: Output logic
+    assign fifo_rd_signal = (state_cur == FETCH);
+    assign uart_tx_data   = raw_byte; // Nếu cần đảo bit, thực hiện ở đây
+
+    // Khối 2: Next State logic
+    always_comb begin
+        state_nxt = state_cur;
+        case (state_cur)
+            IDLE: begin
+                // Chỉ lấy thêm data khi kho có đồ VÀ bồn chứa tạm đang cạn (< 8 bit)
+                if (tx_fifo_count > 0 && bit_left < 5'd8) state_nxt = FETCH;
+                else if (bit_left >= 5'd8)               state_nxt = PROC;
+            end
+            FETCH: begin
+                state_nxt = PROC; // Đã ra lệnh đọc, chuyển sang băm
+            end
+            PROC: begin
+                // Băm cho đến khi còn dưới 8 bit thì quay về IDLE để xem có cần lấy thêm không
+                if (bit_left < 5'd8) state_nxt = IDLE;
+            end
+        endcase
+    end
+
+    // Khối 3: Datapath (always_ff)
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            tx_buffer     <= '0;
-            tx_bit_cnt    <= '0;
-            reading_fifo  <= 1'b0;
-            tx_fifo_rd_en <= 1'b0;
-            uart_tx_wren  <= 1'b0;
-            uart_tx_data  <= '0;
+            state_cur    <= IDLE;
+            shift_reg    <= '0;
+            bit_left     <= '0;
+            uart_tx_wren <= 1'b0;
+            raw_byte     <= '0;
         end else begin
-            uart_tx_wren  <= 1'b0;
-            tx_fifo_rd_en <= 1'b0;
-            
-            if (reading_fifo) begin
-                tx_buffer    <= (tx_buffer << 10) | tx_fifo_q;
-                tx_bit_cnt   <= tx_bit_cnt + 5'd10;
-                reading_fifo <= 1'b0;
-            end
-            else if (tx_bit_cnt >= 5'd8) begin
-                if (!uart_tx_fifo_full && !uart_tx_wren) begin
-                    uart_tx_data <= (tx_buffer >> (tx_bit_cnt - 5'd8)) & 8'hFF;
-                    uart_tx_wren <= 1'b1;
-                    tx_bit_cnt   <= tx_bit_cnt - 5'd8;
+            state_cur    <= state_nxt;
+            uart_tx_wren <= 1'b0;
+
+            case (state_cur)
+                FETCH: begin
+                    // Dữ liệu từ RAM sẽ xuất hiện ở nhịp sau (khi state đã là PROC)
                 end
-            end
-            else if (!tx_fifo_empty && !tx_fifo_rd_en) begin
-                tx_fifo_rd_en <= 1'b1;
-                reading_fifo  <= 1'b1;
-            end
+                PROC: begin
+                    if (fifo_rd_signal_delayed) begin // Dùng một cờ trễ 1 nhịp để bắt data từ RAM
+                         shift_reg <= (shift_reg << 10) | fifo_data_out;
+                         bit_left  <= bit_left + 5'd10;
+                    end 
+                    else if (bit_left >= 5'd8 && !uart_tx_fifo_full && !uart_tx_wren) begin
+                         raw_byte     <= (shift_reg >> (bit_left - 5'd8)) & 8'hFF;
+                         uart_tx_wren <= 1'b1;
+                         bit_left     <= bit_left - 5'd8;
+                    end
+                end
+            endcase
         end
     end
-endmodule: uart_tx_buffer
+
+    // Cờ trễ để bắt dữ liệu RAM Sync
+    logic fifo_rd_signal_delayed;
+    always_ff @(posedge clk) fifo_rd_signal_delayed <= fifo_rd_signal;
+
+endmodule
 
 // =========================================================
 // Các module phụ trợ (Giữ nguyên)
@@ -517,11 +554,10 @@ module dec_err_track_ram (
                     corr_cnt                 <= corr_cnt + 10'd1;
                 end
             end
+
+            rd_pos <= dec_pos_mem[rev_rd_addr];
+            rd_mag <= dec_mag_mem[rev_rd_addr];
         end
-
-        rd_pos <= dec_pos_mem[rev_rd_addr];
-        rd_mag <= dec_mag_mem[rev_rd_addr];
-
     end
 
     logic [9:0] rev_rd_addr;

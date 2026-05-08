@@ -484,7 +484,6 @@ set_global_assignment -name SDC_FILE wrapper_uart.sdc
 set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/uart/uart_core.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/top/wrapper_uart.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/top/top.sv
-set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/top/led_7s_enc.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/fec/common/gf_mul_const_g.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/fec/common/gf_mul_const_alpha_inv.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/fec/common/gf_mul_const_alpha.sv

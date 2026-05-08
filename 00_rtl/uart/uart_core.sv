@@ -162,8 +162,8 @@ module uart_async_fifo #(parameter int WIDTH = 8) (
     logic rd_allow;
 
     always_comb begin : proc_logic
-        wr_count_next = wr_count + 1;
-        rd_count_next = rd_count + 1;
+        wr_count_next = wr_count + 6'd1;
+        rd_count_next = rd_count + 6'd1;
         mem_wr_addr   = wr_count[4:0];
         mem_rd_addr   = rd_count[4:0];
         full          = (wr_count[5] ^ rd_count[5]) & ~|(wr_count[4:0] ^ rd_count[4:0]);
@@ -754,8 +754,8 @@ module uart_tx (
     logic       bit_count_rst;
     logic       clk_count_rst;
 
-    assign bit_count_next = (bit_count_rst) ? bit_count + 4'h1 : 0;
-    assign clk_count_next = (clk_count_rst) ? clk_count + 4'h1 : 0;
+    assign bit_count_next = 4'((bit_count_rst) ? bit_count + 4'h1 : 0);
+    assign clk_count_next = 4'((clk_count_rst) ? clk_count + 4'h1 : 0);
 
     always_ff @(posedge i_sample_clk, negedge i_rst_n) begin : proc_bit_counter
         if (~i_rst_n) begin

@@ -1,0 +1,143 @@
+
+#
+# Mnemonic Maps
+#
+mmap new  -reuse -name {Boolean as Logic} -radix %b -contents {{%c=FALSE -edgepriority 1 -shape low}
+{%c=TRUE -edgepriority 1 -shape high}}
+mmap new  -reuse -name {Example Map} -radix %x -contents {{%b=11???? -bgcolor orange -label REG:%x -linecolor yellow -shape bus}
+{%x=1F -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=2C -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=* -label %x -linecolor gray -shape bus}}
+
+array unset createdGroup
+array set createdGroup {}
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.clk}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.rst_n}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.baud_clk}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.bytes_transmitted}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_buf.rs_tx_vld}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_buf.rs_tx_dat[9:0]}]}
+	} ]]
+waveform format $id -radix %b -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_buf.state_cur[1:0]}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_buf.w_en}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_buf.r_en}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_buf.buf_tx_vld}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_buf.buf_tx_dat[9:0]}]}
+	} ]]
+waveform format $id -radix %b -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.gbx_tx_done}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.gbx_tx_vld}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.gbx_tx_dat[7:0]}]}
+	} ]]
+waveform format $id -radix %b -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_uart.i_tx_en}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_uart.i_tx_wren}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_uart.i_tx_data[7:0]}]}
+	} ]]
+waveform format $id -radix %b -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_uart.o_tx_done}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_uart.o_tx}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.state_cur[1:0]}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.uart_rdy_flg}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.buf_vld}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.cnt_is_16}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.reg_en}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.reg_sel}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.cnt_bit_incr}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.cnt_bit_decr}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.cnt_sym_en}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.cnt_sym_clr}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.cnt_bit_dat[4:0]}]}
+	} ]]
+waveform format $id -radix %d -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.cnt_sym_dat[9:0]}]}
+	} ]]
+waveform format $id -radix %d -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {rs_uart_tx_gbx_tb.u_gbx.reg_dat[15:0]}]}
+	} ]]
+waveform format $id -radix %b -color #00ffff -namecolor #00ffff
+
+waveform xview limits 46666845.68ns 47337934.32ns

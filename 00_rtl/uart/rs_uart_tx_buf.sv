@@ -1,27 +1,25 @@
-module rs_uart_rx_buf
+module rs_uart_tx_buf
 (
     input logic         clk, rst_n,
-    input logic         rs_sel,
-    input logic         gbx_rx_vld,
-    input logic [9:0]   gbx_rx_dat,
+    input logic         rs_tx_vld,
+    input logic [9:0]   rs_tx_dat,
+    input logic         gbx_tx_done,
 
-    output logic        buf_rx_sop,
-    output logic        buf_rx_vld,
-    output logic [9:0]  buf_rx_dat,
-    output logic        buf_rx_err
+    output logic        buf_tx_vld,
+    output logic [9:0]  buf_tx_dat,
+    output logic        buf_tx_err
 );
 
 // Local Var
-    logic [9:0]     cnt_target;
+    logic           rs_vld;
+    logic [9:0]     rs_dat;
 
-    logic           gbx_vld;
-    logic [9:0]     gbx_dat;
+    logic           gbx_done;
 
-    logic           buf_sop;
     logic           buf_vld;
     logic [9:0]     buf_dat;
     logic           buf_err;
-    
+
     logic           w_en;
     logic           r_en;
 
@@ -31,27 +29,25 @@ module rs_uart_rx_buf
 
     logic [9:0]     r_cnt_dat;
     logic           r_cnt_clr; 
-    logic           r_cnt_final;  
+    logic           r_cnt_final;
 
 // Var Assignment
-    assign cnt_target = rs_sel ? 10'd544 : 10'd514;
+    assign rs_vld = rs_tx_vld;
+    assign rs_dat = rs_tx_dat;
 
-    assign gbx_vld = gbx_rx_vld;
-    assign gbx_dat = gbx_rx_dat;
-    
-    assign buf_rx_sop = buf_sop;
-    assign buf_rx_vld = buf_vld;
-    assign buf_rx_dat = buf_dat;
-    assign buf_rx_err = buf_err;
+    assign gbx_done = gbx_tx_done;
+
+    assign buf_tx_vld = buf_vld;
+    assign buf_tx_dat = buf_dat;
+    assign buf_tx_err = buf_err;
 
 // FIFO Memory
     logic [9:0] fifo [1023:0];
 
 //--- 1. FSM ---
-    typedef enum logic [2:0] {
-        IDLE,
-        READ1,
-        READ2,
+    typedef enum logic [1:0] {
+        READY,
+        LOAD,
         DONE
     } state_t;
 
@@ -59,33 +55,21 @@ module rs_uart_rx_buf
 
     always_comb begin
         case (state_cur)
-            IDLE: begin
-                w_en        = gbx_vld ? 1'b1 : 1'b0;
-                r_en        = (gbx_vld & w_cnt_final) ? 1'b1 : 1'b0;
-                w_cnt_clr   = (gbx_vld & w_cnt_final) ? 1'b1 : 1'b0;
-                r_cnt_clr   = 1'b0;
-                buf_sop     = 1'b0;
+            READY: begin
+                w_en        = rs_vld ? 1'b1 : 1'b0;
+                r_en        = 1'b0;
+                w_cnt_clr   = (rs_vld & w_cnt_final) ? 1'b1 : 1'b0;
+                r_cnt_clr   = r_cnt_final ? 1'b1 : 1'b0;
                 buf_vld     = 1'b0;
                 buf_err     = 1'b0;
             end
 
-            READ1: begin
+            LOAD: begin
                 w_en        = 1'b0;
                 r_en        = 1'b1;
                 w_cnt_clr   = 1'b0;
                 r_cnt_clr   = 1'b0;
-                buf_sop     = 1'b1;
-                buf_vld     = 1'b1;
-                buf_err     = 1'b0;
-            end
-
-            READ2: begin
-                w_en        = 1'b0;
-                r_en        = 1'b1;
-                w_cnt_clr   = 1'b0;
-                r_cnt_clr   = r_cnt_final ? 1'b1 : 1'b0;
-                buf_sop     = 1'b0;
-                buf_vld     = 1'b1;
+                buf_vld     = 1'b0;
                 buf_err     = 1'b0;
             end
 
@@ -94,7 +78,6 @@ module rs_uart_rx_buf
                 r_en        = 1'b0;
                 w_cnt_clr   = 1'b0;
                 r_cnt_clr   = 1'b0;
-                buf_sop     = 1'b0;
                 buf_vld     = 1'b1;
                 buf_err     = 1'b0;
             end
@@ -104,7 +87,6 @@ module rs_uart_rx_buf
                 r_en        = 1'b0;
                 w_cnt_clr   = 1'b0;
                 r_cnt_clr   = 1'b0;
-                buf_sop     = 1'b0;
                 buf_vld     = 1'b0;
                 buf_err     = 1'b1;
             end
@@ -113,32 +95,29 @@ module rs_uart_rx_buf
 
     always_comb begin
         case (state_cur)
-            IDLE: begin
-                if (gbx_vld & w_cnt_final)  state_nxt = READ1;
-                else                        state_nxt = IDLE;
-            end 
-
-            READ1: begin
-                state_nxt = READ2;
+            READY: begin
+                if (rs_vld & w_cnt_final)   state_nxt = LOAD;
+                else                        state_nxt = READY;
             end
 
-            READ2: begin
-                if (r_cnt_final)    state_nxt = DONE;
-                else                state_nxt = READ2;
+            LOAD: begin
+                state_nxt = DONE;
             end
 
             DONE: begin
-                state_nxt = IDLE;
+                if (gbx_done & r_cnt_final)         state_nxt = READY;
+                else if (gbx_done & ~r_cnt_final)   state_nxt = LOAD;
+                else                                state_nxt = DONE;
             end
 
             default: begin
-                state_nxt = IDLE;
+                state_nxt = READY;
             end
         endcase
     end
 
     always_ff @(posedge clk or negedge rst_n) begin
-        if (~rst_n) state_cur   <= IDLE;    
+        if (~rst_n) state_cur   <= READY;    
         else        state_cur   <= state_nxt; 
     end
 
@@ -150,9 +129,9 @@ module rs_uart_rx_buf
         else                w_cnt_dat <= w_cnt_dat;
     end
 
-    assign w_cnt_final = (w_cnt_dat == cnt_target - 10'd1);
+    assign w_cnt_final = (w_cnt_dat == 10'd544 - 10'd1);
 
-//--- 3. Read Counter ---
+//--- 3. LOAD Counter ---
     always_ff @(posedge clk or negedge rst_n) begin
         if (~rst_n)         r_cnt_dat <= 10'd0;   
         else if (r_cnt_clr) r_cnt_dat <= 10'd0;   
@@ -160,14 +139,12 @@ module rs_uart_rx_buf
         else                r_cnt_dat <= r_cnt_dat;
     end
 
-    assign r_cnt_final = (r_cnt_dat == cnt_target - 10'd1);
+    assign r_cnt_final = (r_cnt_dat == 10'd544);
 
 //--- 4. FIFO Memory ---
     always_ff @(posedge clk) begin
-        if (w_en)   fifo[w_cnt_dat] <= gbx_dat;
+        if (w_en)   fifo[w_cnt_dat] <= rs_dat;
         if (r_en)   buf_dat         <= fifo[r_cnt_dat];
-        else        buf_dat         <= '0;
     end
 
-
-endmodule: rs_uart_rx_buf
+endmodule: rs_uart_tx_buf

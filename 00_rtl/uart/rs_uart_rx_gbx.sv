@@ -2,18 +2,20 @@ module rs_uart_rx_gbx
 (
     input logic         clk, rst_n,
     input logic         rs_sel,
-    input logic         uart_rx_vld,
+    input logic         uart_rx_done,
     input logic [7:0]   uart_rx_dat,
 
     output logic        gbx_rx_vld,
     output logic [9:0]  gbx_rx_dat,
+    output logic        gbx_rx_end,
     output logic        gbx_rx_err
 );
 
-// Local var
+// Local Var
 
     logic [9:0]     byte_target;
-    logic           uart_rx_vld_prv;
+
+    logic           uart_rx_done_prv;
     logic           uart_vld_flg;
 
     logic           buf_en;
@@ -34,11 +36,14 @@ module rs_uart_rx_gbx
     logic [9:0]     cnt_byte_dat;
     logic           byte_final;
 
+    logic           gbx_end;
+
     logic           gbx_err;
 
-// Global var assignment
+// Global Var Assignment
     assign gbx_rx_vld = gbx_vld;
     assign gbx_rx_dat = gbx_dat;
+    assign gbx_rx_end = cnt_byte_clr;
     assign gbx_rx_err = gbx_err;
 
 //--- 1. FSM ---
@@ -179,7 +184,7 @@ module rs_uart_rx_gbx
         else        cnt_bit_dat <= cnt_bit_dat_nxt;
     end
 
-    assign bit_ge_10    = (cnt_bit_dat >= 16'd10);
+    assign bit_ge_10    = (cnt_bit_dat >= 5'd10);
 
 //--- 3. Byte Counter ---
     always_ff @(posedge clk or negedge rst_n) begin
@@ -192,12 +197,12 @@ module rs_uart_rx_gbx
     assign byte_target  = rs_sel ? 10'd680 : 10'd642;
     assign byte_final   = (cnt_byte_dat == byte_target);
 
-//--- 4. UART Valid Falling Edge Detection ---
+//--- 4. UART Done Falling Edge Detection ---
     always_ff @(posedge clk, negedge rst_n) begin
-        if (~rst_n) uart_rx_vld_prv <= 1'b0;
-        else        uart_rx_vld_prv <= uart_rx_vld;
+        if (~rst_n) uart_rx_done_prv <= 1'b0;
+        else        uart_rx_done_prv <= uart_rx_done;
     end
-    assign uart_vld_flg = ~uart_rx_vld & uart_rx_vld_prv;
+    assign uart_vld_flg = ~uart_rx_done & uart_rx_done_prv;
 
 //--- 5. Buffer ---
     logic [15:0] buf_shf;

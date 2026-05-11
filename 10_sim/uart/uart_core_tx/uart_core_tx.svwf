@@ -1,0 +1,57 @@
+
+#
+# Mnemonic Maps
+#
+mmap new  -reuse -name {Boolean as Logic} -radix %b -contents {{%c=FALSE -edgepriority 1 -shape low}
+{%c=TRUE -edgepriority 1 -shape high}}
+mmap new  -reuse -name {Example Map} -radix %x -contents {{%b=11???? -bgcolor orange -label REG:%x -linecolor yellow -shape bus}
+{%x=1F -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=2C -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=* -label %x -linecolor gray -shape bus}}
+
+array unset createdGroup
+array set createdGroup {}
+set id [waveform add -signals [subst  {
+	{[format {uart_core_tx_tb.clk}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {uart_core_tx_tb.rst_n}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {uart_core_tx_tb.baud_clk}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {uart_core_tx_tb.dut.i_tx_data[7:0]}]}
+	} ]]
+waveform format $id -radix %b
+set id [waveform add -signals [subst  {
+	{[format {uart_core_tx_tb.dut.i_tx_en}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {uart_core_tx_tb.dut.i_tx_wren}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {uart_core_tx_tb.dut.o_tx_fifo_empty}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {uart_core_tx_tb.dut.o_tx_fifo_full}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {uart_core_tx_tb.dut.o_tx_fifo_level[5:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {uart_core_tx_tb.dut.o_tx_idle}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {uart_core_tx_tb.dut.o_tx_done}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {uart_core_tx_tb.dut.o_tx}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {uart_core_tx_tb.dut.uart_tx.asynchronous_fifo.fifo_mem.mem[31:0]}]}
+	} ]]
+waveform hierarchy collapse $id
+
+waveform xview limits 86180.462ns 88108.002ns

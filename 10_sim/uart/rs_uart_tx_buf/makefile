@@ -1,5 +1,5 @@
 filelist	="-f ./flist.f"
-tb_file		="/home/admin/CapstoneProject3/01_tb/uart/uart_core_tx_tb.sv"
+tb_file		="/home/admin/CapstoneProject3/01_tb/uart/rs_uart_tx_buf_tb.sv"
 time_unit	="-timescale 1ns/1ns"
 acc_debug	="+access+rcw"
 seed 		= +ntb_random_seed=automatic

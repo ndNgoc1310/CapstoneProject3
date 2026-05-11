@@ -108,6 +108,50 @@ set id [waveform add -signals [subst  {
 	} ]]
 waveform format $id -radix %b -color #ffff00 -namecolor #ffff00
 set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.Decoder.Chien.CHIEN_CTRL.state_cur[2:0]}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.Decoder.Chien.CHIEN_CNT.err_flg}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.Decoder.Chien.CHIEN_CTRL.uncorr}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.Decoder.Chien.sys_err}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.Decoder.Chien.CHIEN_CNT.len_in[4:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.Decoder.Chien.CHIEN_CNT.err_cnt_in[4:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.Decoder.Chien.CHIEN_CNT.err_cnt_out[4:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.Decoder.Chien.CHIEN_CNT.actual_err_cnt[4:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.Decoder.Chien.CHIEN_CNT.cnt_out[9:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.Decoder.Chien.CHIEN_CNT.cnt_end}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.Decoder.Chien.CHIEN_CNT.cnt_final}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
 	{[format {wrapper_uart_tb.rs_codec.dec_sop_out}]}
 	} ]]
 waveform format $id -color #ff00ff -namecolor #ff00ff
@@ -124,9 +168,21 @@ set id [waveform add -signals [subst  {
 	} ]]
 waveform format $id -color #ff9900 -namecolor #ff9900
 set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_buf.w_cnt_final}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_buf.w_en}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
 	{[format {wrapper_uart_tb.rs_uart_tx_buf.r_en}]}
 	} ]]
 waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_buf.w_cnt_dat[9:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ff9900 -namecolor #ff9900
 set id [waveform add -signals [subst  {
 	{[format {wrapper_uart_tb.rs_uart_tx_buf.r_cnt_dat[9:0]}]}
 	} ]]
@@ -200,4 +256,4 @@ set id [waveform add -signals [subst  {
 	} ]]
 waveform format $id -color #ff0099 -namecolor #ff0099
 
-waveform xview limits 66865335.131ns 66865386.869ns
+waveform xview limits 451658879.102ns 451659086.078ns

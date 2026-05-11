@@ -95,7 +95,7 @@ module wrapper_uart_tb;
     // Watchdog Timer (Tránh kẹt vĩnh viễn)
     // ==========================================
     initial begin
-        #(BIT_TIME * 50000); 
+        #(BIT_TIME * 100000); 
         $display("\n[%0t] FATAL: SIMULATION TIMEOUT!", $time);
         $display("Hệ thống bị treo. Tiến hành đóng giả lập để lưu waveform.");
         $finish;
@@ -304,23 +304,19 @@ module wrapper_uart_tb;
         #(CLK_PERIOD * 5);
 
         // =========================================================================
-        // TÌNH HUỐNG 1: RS_ENC (Encode Mode)
+        // TÌNH HUỐNG 1: RS_ENC (Encode Mode) - 'a' và 'b' xen kẽ
         // =========================================================================
         $display("---------------------------------------------------------");
         $display("[%0t] TÌNH HUỐNG 1: RS_ENC - Gửi 642 bytes xen kẽ 'a' (0x61) và 'b' (0x62)", $time);
         
         rs_sel = 1'b0; 
 
-        // Truyền 642 bytes qua UART giả lập PC
         for (i = 0; i < 642; i++) begin
             pc_send_uart_byte((i % 2 == 0) ? 8'h61 : 8'h62);
         end
 
-        // Chờ Output từ encoder. Khối encoder sẽ tạo ra 544 symbol = 5440 bits = 680 bytes.
         wait (gbx_tx_byte_count == 680);
-        $display("[%0t] Encode Hoàn Tất! Đã bắt được %0d bytes trả về.", $time, encoded_data_queue.size());
-        
-        // Đợi một khoảng thời gian cho Hardware UART TX xả dứt điểm byte cuối ra đường truyền
+        $display("[%0t] Encode TH1 Hoàn Tất! Đã bắt được %0d bytes trả về.", $time, encoded_data_queue.size());
         #(BIT_TIME * 20);
 
         // =========================================================================
@@ -329,10 +325,8 @@ module wrapper_uart_tb;
         $display("---------------------------------------------------------");
         $display("[%0t] TÌNH HUỐNG 2: RS_DEC - Gửi 680 bytes vừa thu được từ bộ Encode", $time);
         
-        // Chuyển Mode và Reset lại biến theo dõi
         rs_sel = 1'b1;
 
-        // Reset toàn hệ thống để xóa sạch pipeline cũ trước khi bơm gói mới
         rst_n = 1'b0;
         gbx_tx_byte_count_rst = 1'b1;
         #(CLK_PERIOD * 10);
@@ -341,18 +335,74 @@ module wrapper_uart_tb;
         gbx_tx_byte_count_rst = 1'b0;
         #(CLK_PERIOD * 5);
 
-        // Bơm ngược 680 bytes đã hứng từ tình huống 1 vào lại UART RX
         while (encoded_data_queue.size() > 0) begin
             logic [7:0] byte_to_send;
             byte_to_send = encoded_data_queue.pop_front();
             pc_send_uart_byte(byte_to_send);
         end
 
-        // Decoder sẽ giải mã và trả lại payload ban đầu gồm 544 symbol = 5440 bits = 680 bytes
         wait (gbx_tx_byte_count == 680);
-        $display("[%0t] Decode Hoàn Tất! Gói tin đã chạy qua toàn bộ pipeline thành công.", $time);
-
+        $display("[%0t] Decode TH2 Hoàn Tất!", $time);
         #(BIT_TIME * 20);
+
+        // =========================================================================
+        // TÌNH HUỐNG 3: RS_ENC (Encode Mode) - Toàn ký tự 'b'
+        // =========================================================================
+        $display("---------------------------------------------------------");
+        $display("[%0t] TÌNH HUỐNG 3: RS_ENC - Gửi 642 bytes TOÀN KÝ TỰ 'b' (0x62)", $time);
+        
+        rs_sel = 1'b0; 
+
+        // Reset hệ thống chuẩn bị cho tình huống 3
+        rst_n = 1'b0;
+        gbx_tx_byte_count_rst = 1'b1;
+        #(CLK_PERIOD * 10);
+        rst_n = 1'b1;
+        #(CLK_PERIOD * 5);
+        gbx_tx_byte_count_rst = 1'b0;
+        #(CLK_PERIOD * 5);
+
+        for (i = 0; i < 642; i++) begin
+            pc_send_uart_byte(8'h62);
+        end
+
+        wait (gbx_tx_byte_count == 680);
+        $display("[%0t] Encode TH3 Hoàn Tất! Đã bắt được %0d bytes trả về.", $time, encoded_data_queue.size());
+        #(BIT_TIME * 20);
+
+        // =========================================================================
+        // TÌNH HUỐNG 4: RS_DEC - Giải mã kèm BƠM LỖI (Error Injection)
+        // =========================================================================
+        $display("---------------------------------------------------------");
+        $display("[%0t] TÌNH HUỐNG 4: RS_DEC - Bơm lỗi byte đầu tiên (Sửa 0x62 thành 0x11)", $time);
+        
+        // --- BƠM LỖI VÀO QUEUE ---
+        if (encoded_data_queue.size() > 0) begin
+            encoded_data_queue[0] = 8'h11; // Ghi đè byte đầu tiên
+            $display("[%0t] Đã sửa lỗi thành công byte đầu tiên trong Queue thành 0x11", $time);
+        end
+
+        rs_sel = 1'b1;
+
+        rst_n = 1'b0;
+        gbx_tx_byte_count_rst = 1'b1;
+        #(CLK_PERIOD * 10);
+        rst_n = 1'b1;
+        #(CLK_PERIOD * 5);
+        gbx_tx_byte_count_rst = 1'b0;
+        #(CLK_PERIOD * 5);
+
+        // Xả 680 byte (đã bị sửa 1 byte đầu) vào Decoder
+        while (encoded_data_queue.size() > 0) begin
+            logic [7:0] byte_to_send;
+            byte_to_send = encoded_data_queue.pop_front();
+            pc_send_uart_byte(byte_to_send);
+        end
+
+        wait (gbx_tx_byte_count == 680);
+        $display("[%0t] Decode TH4 Hoàn Tất! Chờ kiểm tra cờ báo lỗi trên waveform...", $time);
+
+        #(BIT_TIME * 50);
         $display("---------------------------------------------------------");
         $display("[%0t] SIMULATION COMPLETED SUCCESSFULLY", $time);
         $display("---------------------------------------------------------");

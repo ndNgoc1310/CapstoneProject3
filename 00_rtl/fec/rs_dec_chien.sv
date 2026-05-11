@@ -254,10 +254,11 @@ module rs_dec_chien_cnt
 );
 
     // Internal signals
-    logic [CNT_WIDTH-1:0] cnt_in;
-    logic [CNT_WIDTH-1:0] cnt_out;
-    logic [CNT_WIDTH-1:0] cnt_nxt;
+    logic [CNT_WIDTH-1:0]   cnt_in;
+    logic [CNT_WIDTH-1:0]   cnt_out;
+    logic [CNT_WIDTH-1:0]   cnt_nxt;
 
+    logic                   cnt_final;
     // --- 1.
     add_sub_nb #(.WIDTH(CNT_WIDTH)) Cnt_Add (
         .a      (cnt_out),
@@ -283,8 +284,8 @@ module rs_dec_chien_cnt
     );
 
     // --- 2.
-    assign cnt_end = &{cnt_out[9], cnt_out[4:1]}; // Đếm tới 542 rồi chuyển sang state DONE thực hiện chu kỳ cuối cùng, dù có state INIT (ảo) nhưng chu kỳ nạp giá trị khởi điểm này được tính là dò lỗi tại ví trí đầu tiên (alpha^0 = 1), nên tổng cộng vẫn chỉ có 544 chu kỳ
-
+    assign cnt_end      = &{cnt_out[9], cnt_out[4:1]}; // Đếm tới 542 rồi chuyển sang state DONE thực hiện chu kỳ cuối cùng, dù có state INIT (ảo) nhưng chu kỳ nạp giá trị khởi điểm này được tính là dò lỗi tại ví trí đầu tiên (alpha^0 = 1), nên tổng cộng vẫn chỉ có 544 chu kỳ
+    assign cnt_final    = &{cnt_out[9], cnt_out[4:0]}; // Đếm tới 543
     // --- 3.
     logic [4:0] err_cnt_nxt;
     logic [4:0] err_cnt_in;
@@ -323,8 +324,8 @@ module rs_dec_chien_cnt
 
     // Cờ này nảy lên 1 khi:
     // - Đang đếm mà số nghiệm đã VƯỢT QUÁ len_in (Early Termination)
-    // - Hoặc khi chạy XONG gói tin (cnt_end=1) mà số nghiệm KHÔNG BẰNG len_in
-    assign uncorr = (actual_err_cnt > len_in) | (cnt_end & (actual_err_cnt != len_in)); 
+    // - Hoặc khi chạy XONG gói tin (cnt_final=1) mà số nghiệm KHÔNG BẰNG len_in
+    assign uncorr = (actual_err_cnt > len_in) | (cnt_final & (actual_err_cnt != len_in)); 
 
 endmodule: rs_dec_chien_cnt
 

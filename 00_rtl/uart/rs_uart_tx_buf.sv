@@ -1,6 +1,7 @@
 module rs_uart_tx_buf
 (
     input logic         clk, rst_n,
+    input logic         rs_sel,
     input logic         rs_tx_vld,
     input logic [9:0]   rs_tx_dat,
     input logic         gbx_tx_done,
@@ -41,8 +42,8 @@ module rs_uart_tx_buf
     assign buf_tx_dat = buf_dat;
     assign buf_tx_err = buf_err;
 
-// FIFO Memory
-    logic [9:0] fifo [1023:0];
+// mem Memory
+    logic [9:0] mem [1023:0];
 
 //--- 1. FSM ---
     typedef enum logic [1:0] {
@@ -141,10 +142,18 @@ module rs_uart_tx_buf
 
     assign r_cnt_final = (r_cnt_dat == 10'd544);
 
-//--- 4. FIFO Memory ---
+//--- 4. FIFO (rs_enc) / LIFO (rs_dec) - Memory ---
+    logic [9:0] wr_addr, rd_addr;
+
+    // TÍNH TOÁN ĐỊA CHỈ ĐỌC DỰA TRÊN rs_sel
+    // Nếu rs_sel == 0 (FIFO): Đọc xuôi từ 0 -> 543
+    // Nếu rs_sel == 1 (LIFO): Đọc ngược từ 543 -> 0
+    assign rd_addr = rs_sel ? (10'd543 - r_cnt_dat) : r_cnt_dat;
+    assign wr_addr = w_cnt_dat;
+
     always_ff @(posedge clk) begin
-        if (w_en)   fifo[w_cnt_dat] <= rs_dat;
-        if (r_en)   buf_dat         <= fifo[r_cnt_dat];
+        if (w_en)   mem[wr_addr]    <= rs_dat;
+        if (r_en)   buf_dat         <= mem[rd_addr];
     end
 
 endmodule: rs_uart_tx_buf

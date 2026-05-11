@@ -2,7 +2,7 @@ module rs_uart_rx_gbx
 (
     input logic         clk, rst_n,
     input logic         rs_sel,
-    input logic         uart_rx_done,
+    input logic         uart_rx_empty,
     input logic [7:0]   uart_rx_dat,
 
     output logic        gbx_rx_vld,
@@ -15,8 +15,7 @@ module rs_uart_rx_gbx
 
     logic [9:0]     byte_target;
 
-    logic           uart_rx_done_prv;
-    logic           uart_vld_flg;
+    logic           uart_vld;
 
     logic           buf_en;
     logic           buf_sel;
@@ -40,7 +39,9 @@ module rs_uart_rx_gbx
 
     logic           gbx_err;
 
-// Global Var Assignment
+// Global Var Assignment    
+    assign uart_vld = ~uart_rx_empty;
+
     assign gbx_rx_vld = gbx_vld;
     assign gbx_rx_dat = gbx_dat;
     assign gbx_rx_end = cnt_byte_clr;
@@ -64,9 +65,9 @@ module rs_uart_rx_gbx
                 buf_sel         = 1'b0;
                 gbx_sel         = 1'b0;
                 gbx_vld         = 1'b0;
-                cnt_bit_incr    = uart_vld_flg ? 1'b1 : 1'b0;
+                cnt_bit_incr    = uart_vld ? 1'b1 : 1'b0;
                 cnt_bit_decr    = 1'b0;
-                cnt_byte_en     = uart_vld_flg ? 1'b1 : 1'b0;
+                cnt_byte_en     = uart_vld ? 1'b1 : 1'b0;
                 cnt_byte_clr    = 1'b0;
                 gbx_err         = 1'b0;
             end
@@ -136,8 +137,8 @@ module rs_uart_rx_gbx
     always_comb begin
         case (state_cur)
             IDLE: begin
-                if (uart_vld_flg)   state_nxt = GET;
-                else                state_nxt = IDLE;
+                if (uart_vld)   state_nxt = GET;
+                else            state_nxt = IDLE;
             end
 
             GET: begin
@@ -146,7 +147,7 @@ module rs_uart_rx_gbx
             end
 
             LOAD: begin
-                if (uart_vld_flg)               state_nxt = ERROR;
+                if (uart_vld)                   state_nxt = ERROR;
                 else if (byte_final & ~rs_sel)  state_nxt = LOAD_FINAL;
                 else                            state_nxt = IDLE;
             end
@@ -196,13 +197,6 @@ module rs_uart_rx_gbx
 
     assign byte_target  = rs_sel ? 10'd680 : 10'd642;
     assign byte_final   = (cnt_byte_dat == byte_target);
-
-//--- 4. UART Done Falling Edge Detection ---
-    always_ff @(posedge clk, negedge rst_n) begin
-        if (~rst_n) uart_rx_done_prv <= 1'b0;
-        else        uart_rx_done_prv <= uart_rx_done;
-    end
-    assign uart_vld_flg = ~uart_rx_done & uart_rx_done_prv;
 
 //--- 5. Buffer ---
     logic [15:0] buf_shf;

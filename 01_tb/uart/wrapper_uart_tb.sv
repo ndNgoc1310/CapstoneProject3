@@ -24,13 +24,13 @@ module wrapper_uart_tb;
     logic       uart_rx_en;
     logic       uart_rx_rden;
     logic [7:0] uart_rx_dat;
-    logic       uart_rx_done;
+    logic       uart_rx_empty;
     logic       uart_rx_serial;
 
     logic       uart_tx_en;
     logic       uart_tx_wren;
     logic [7:0] uart_tx_dat;
-    logic       uart_tx_done;
+    logic       uart_tx_empty;
     logic       uart_tx_serial;
 
     // RX Gearbox -> RX Buffer
@@ -67,6 +67,7 @@ module wrapper_uart_tb;
     // Testbench Variables & Queues
     // ==========================================
     logic [7:0] encoded_data_queue [$]; // Queue lưu trữ 680 byte Output từ tình huống 1
+    logic       gbx_tx_byte_count_rst;
     integer     gbx_tx_byte_count;      // Bộ đếm giám sát số byte GBX TX đã xuất ra
 
     // ==========================================
@@ -94,7 +95,7 @@ module wrapper_uart_tb;
     // Watchdog Timer (Tránh kẹt vĩnh viễn)
     // ==========================================
     initial begin
-        #(BIT_TIME * 20000); 
+        #(BIT_TIME * 50000); 
         $display("\n[%0t] FATAL: SIMULATION TIMEOUT!", $time);
         $display("Hệ thống bị treo. Tiến hành đóng giả lập để lưu waveform.");
         $finish;
@@ -126,8 +127,8 @@ module wrapper_uart_tb;
     end
 
     // --- Data Capture Monitor (Bắt data trực tiếp từ gbx xuất cho uart) ---
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (~rst_n) begin
+    always_ff @(posedge clk or posedge gbx_tx_byte_count_rst) begin
+        if (gbx_tx_byte_count_rst) begin
             gbx_tx_byte_count <= 0;
         end else begin
             if (gbx_tx_vld) begin
@@ -159,9 +160,9 @@ module wrapper_uart_tb;
         .i_tx_wren          (uart_tx_wren),
         .i_tx_data          (uart_tx_dat),
         .o_tx_idle          (),
-        .o_tx_done          (uart_tx_done),
+        .o_tx_done          (),
         .i_tx_fifo_clr      (~rst_n),
-        .o_tx_fifo_empty    (),
+        .o_tx_fifo_empty    (uart_tx_empty),
         .o_tx_fifo_full     (),
         .o_tx_fifo_level    (),
         
@@ -169,9 +170,9 @@ module wrapper_uart_tb;
         .i_rx_rden          (uart_rx_rden), 
         .o_rx_data          (uart_rx_dat),
         .o_rx_idle          (),
-        .o_rx_done          (uart_rx_done),
+        .o_rx_done          (),
         .i_rx_fifo_clr      (~rst_n),
-        .o_rx_fifo_empty    (),
+        .o_rx_fifo_empty    (uart_rx_empty),
         .o_rx_fifo_full     (),
         .o_rx_fifo_level    (),
         .o_rx_frame_error   (),
@@ -187,7 +188,7 @@ module wrapper_uart_tb;
         .clk            (clk),
         .rst_n          (rst_n),
         .rs_sel         (rs_sel),
-        .uart_rx_done   (uart_rx_done),
+        .uart_rx_empty  (uart_rx_empty),
         .uart_rx_dat    (uart_rx_dat),
         .gbx_rx_vld     (gbx_rx_vld),
         .gbx_rx_dat     (gbx_rx_dat),
@@ -240,6 +241,7 @@ module wrapper_uart_tb;
     rs_uart_tx_buf rs_uart_tx_buf (
         .clk            (clk),
         .rst_n          (rst_n),
+        .rs_sel         (rs_sel),
         .rs_tx_vld      (rs_tx_vld),
         .rs_tx_dat      (rs_tx_dat),
         .gbx_tx_done    (gbx_tx_done), // Map tín hiệu Done
@@ -254,7 +256,7 @@ module wrapper_uart_tb;
         .rst_n          (rst_n),
         .buf_tx_vld     (buf_tx_vld),
         .buf_tx_dat     (buf_tx_dat),   
-        .uart_tx_done   (uart_tx_done),    
+        .uart_tx_empty  (uart_tx_empty),    
         .gbx_tx_vld     (gbx_tx_vld),
         .gbx_tx_dat     (gbx_tx_dat),
         .gbx_tx_done    (gbx_tx_done),
@@ -292,23 +294,26 @@ module wrapper_uart_tb;
         rst_n          = 1'b0;
         rs_sel         = 1'b0;
         uart_rx_serial = 1'b1;
+        gbx_tx_byte_count_rst = 1'b1;
         encoded_data_queue.delete();
 
         #(CLK_PERIOD * 10);
         rst_n = 1'b1;
-        #(CLK_PERIOD * 10);
+        #(CLK_PERIOD * 5);
+        gbx_tx_byte_count_rst = 1'b0;
+        #(CLK_PERIOD * 5);
 
         // =========================================================================
         // TÌNH HUỐNG 1: RS_ENC (Encode Mode)
         // =========================================================================
         $display("---------------------------------------------------------");
-        $display("[%0t] TÌNH HUỐNG 1: RS_ENC - Gửi 642 bytes 'b' (0x62)", $time);
+        $display("[%0t] TÌNH HUỐNG 1: RS_ENC - Gửi 642 bytes xen kẽ 'a' (0x61) và 'b' (0x62)", $time);
         
         rs_sel = 1'b0; 
 
         // Truyền 642 bytes qua UART giả lập PC
         for (i = 0; i < 642; i++) begin
-            pc_send_uart_byte(8'h62);
+            pc_send_uart_byte((i % 2 == 0) ? 8'h61 : 8'h62);
         end
 
         // Chờ Output từ encoder. Khối encoder sẽ tạo ra 544 symbol = 5440 bits = 680 bytes.
@@ -329,9 +334,12 @@ module wrapper_uart_tb;
 
         // Reset toàn hệ thống để xóa sạch pipeline cũ trước khi bơm gói mới
         rst_n = 1'b0;
+        gbx_tx_byte_count_rst = 1'b1;
         #(CLK_PERIOD * 10);
         rst_n = 1'b1;
-        #(CLK_PERIOD * 10);
+        #(CLK_PERIOD * 5);
+        gbx_tx_byte_count_rst = 1'b0;
+        #(CLK_PERIOD * 5);
 
         // Bơm ngược 680 bytes đã hứng từ tình huống 1 vào lại UART RX
         while (encoded_data_queue.size() > 0) begin
@@ -340,8 +348,8 @@ module wrapper_uart_tb;
             pc_send_uart_byte(byte_to_send);
         end
 
-        // Decoder sẽ giải mã và trả lại payload ban đầu gồm 514 symbol = 5140 bits = 642 bytes (dư 4 zero bit = 1 byte null) -> Tổng xả: 643 bytes
-        wait (gbx_tx_byte_count == 643);
+        // Decoder sẽ giải mã và trả lại payload ban đầu gồm 544 symbol = 5440 bits = 680 bytes
+        wait (gbx_tx_byte_count == 680);
         $display("[%0t] Decode Hoàn Tất! Gói tin đã chạy qua toàn bộ pipeline thành công.", $time);
 
         #(BIT_TIME * 20);

@@ -22,8 +22,13 @@ module wrapper_uart (
     // I/O
     logic       clk;
     logic       rst_n; 
+
     logic       rs_sel;
+
     logic [1:0] disp_mode;
+
+    logic       key_nxt;
+    logic       key_prv;
 
     logic [9:0] corr_cnt;
     logic [9:0] disp_idx;
@@ -33,18 +38,19 @@ module wrapper_uart (
 
     logic       enc_err_led;
     logic       dec_err_led;
+
     logic [6:0] hex_led [5:0];
 
     // UART Core
     logic       uart_rx_en;
     logic       uart_rx_rden;
     logic [7:0] uart_rx_dat;
-    logic       uart_rx_done;
+    logic       uart_rx_empty;
     logic       uart_rx;
 
     logic       uart_tx_wren;
     logic [7:0] uart_tx_dat;
-    logic       uart_tx_done;
+    logic       uart_tx_empty;
     logic       uart_tx;
 
     // RX Gearbox
@@ -91,8 +97,13 @@ module wrapper_uart (
     // I/O
     assign clk          = CLOCK_50;
     assign rst_n        = KEY[0];
+
     assign rs_sel       = SW[9];
+
     assign disp_mode    = SW[4:3];
+
+    assign key_nxt      = KEY[2];
+    assign key_prv      = KEY[3];
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -121,6 +132,9 @@ module wrapper_uart (
     assign HEX3 = hex[3];
     assign HEX4 = hex[4];
     assign HEX5 = hex[5];
+
+    assign uart_rx = GPIO[0];
+    assign GPIO[1] = uart_tx;
 
     // RX UART Control
     always_ff @(posedge clk or negedge rst_n) begin
@@ -154,9 +168,9 @@ module wrapper_uart (
         .i_tx_wren          (uart_tx_wren),
         .i_tx_data          (uart_tx_dat),
         .o_tx_idle          (),
-        .o_tx_done          (uart_tx_done),
+        .o_tx_done          (),
         .i_tx_fifo_clr      (~rst_n),
-        .o_tx_fifo_empty    (),
+        .o_tx_fifo_empty    (uart_tx_empty),
         .o_tx_fifo_full     (),
         .o_tx_fifo_level    (),
         
@@ -164,9 +178,9 @@ module wrapper_uart (
         .i_rx_rden          (uart_rx_rden), 
         .o_rx_data          (uart_rx_dat),
         .o_rx_idle          (),
-        .o_rx_done          (uart_rx_done),
+        .o_rx_done          (),
         .i_rx_fifo_clr      (~rst_n),
-        .o_rx_fifo_empty    (),
+        .o_rx_fifo_empty    (uart_rx_empty),
         .o_rx_fifo_full     (),
         .o_rx_fifo_level    (),
         .o_rx_frame_error   (),
@@ -183,7 +197,7 @@ module wrapper_uart (
         .rst_n          (rst_n),
         .rs_sel         (rs_sel),
         
-        .uart_rx_done   (uart_rx_done),
+        .uart_rx_empty  (uart_rx_empty),
         .uart_rx_dat    (uart_rx_dat),
 
         .gbx_rx_vld     (gbx_rx_vld),
@@ -240,6 +254,7 @@ module wrapper_uart (
     rs_uart_tx_buf rs_uart_tx_buf (
         .clk            (clk),
         .rst_n          (rst_n),
+        .rs_sel         (rs_sel),
 
         .rs_tx_vld      (rs_tx_vld),
         .rs_tx_dat      (rs_tx_dat),
@@ -259,7 +274,7 @@ module wrapper_uart (
         .buf_tx_vld     (buf_tx_vld),
         .buf_tx_dat     (buf_tx_dat),   
 
-        .uart_tx_done   (uart_tx_done),    
+        .uart_tx_empty  (uart_tx_empty),    
 
         .gbx_tx_vld     (gbx_tx_vld),
         .gbx_tx_dat     (gbx_tx_dat),
@@ -289,8 +304,8 @@ module wrapper_uart (
         .rst_n      (rst_n),
         .disp_mode  (disp_mode),
         .inj_cnt    (corr_cnt),
-        .key_nxt    (KEY[2]),
-        .key_prv    (KEY[3]),
+        .key_nxt    (key_nxt),
+        .key_prv    (key_prv),
         .disp_idx   (disp_idx)
     );
 

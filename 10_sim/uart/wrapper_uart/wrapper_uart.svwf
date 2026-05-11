@@ -1,0 +1,203 @@
+
+#
+# Mnemonic Maps
+#
+mmap new  -reuse -name {Boolean as Logic} -radix %b -contents {{%c=FALSE -edgepriority 1 -shape low}
+{%c=TRUE -edgepriority 1 -shape high}}
+mmap new  -reuse -name {Example Map} -radix %x -contents {{%b=11???? -bgcolor orange -label REG:%x -linecolor yellow -shape bus}
+{%x=1F -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=2C -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=* -label %x -linecolor gray -shape bus}}
+
+array unset createdGroup
+array set createdGroup {}
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.clk}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rst_n}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.baud_clk}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_sel}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.gbx_tx_byte_count_rst}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.gbx_tx_byte_count}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.uart_core.i_rx}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.uart_core.i_rx_en}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.uart_core.i_rx_rden}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.uart_core.o_rx_fifo_level[5:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.uart_core.o_rx_fifo_empty}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.uart_core.o_rx_done}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.uart_core.o_rx_data[7:0]}]}
+	} ]]
+waveform format $id -radix %b -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_rx_gbx.state_cur[2:0]}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_rx_gbx.buf_dat[15:0]}]}
+	} ]]
+waveform format $id -radix %b -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_rx_gbx.gbx_rx_vld}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_rx_gbx.gbx_rx_dat[9:0]}]}
+	} ]]
+waveform format $id -radix %b -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_rx_gbx.gbx_rx_end}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_rx_buf.buf_rx_sop}]}
+	} ]]
+waveform format $id -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_rx_buf.buf_rx_vld}]}
+	} ]]
+waveform format $id -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_rx_buf.buf_rx_dat[9:0]}]}
+	} ]]
+waveform format $id -radix %b -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.enc_sop_out}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.enc_vld_out}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.enc_dat_out[9:0]}]}
+	} ]]
+waveform format $id -radix %b -color #ffff00 -namecolor #ffff00
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.dec_sop_out}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.dec_vld_out}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_codec.dec_dat_out[9:0]}]}
+	} ]]
+waveform format $id -radix %b -color #ff00ff -namecolor #ff00ff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_buf.state_cur[1:0]}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_buf.r_en}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_buf.r_cnt_dat[9:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_buf.rd_addr[9:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_buf.buf_tx_vld}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_buf.buf_tx_dat[9:0]}]}
+	} ]]
+waveform format $id -radix %b -color #ff9900 -namecolor #ff9900
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_gbx.state_cur[1:0]}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_gbx.reg_dat[15:0]}]}
+	} ]]
+waveform format $id -radix %b -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_gbx.gbx_tx_vld}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_gbx.gbx_tx_dat[7:0]}]}
+	} ]]
+waveform format $id -radix %b -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_gbx.gbx_tx_done}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.rs_uart_tx_gbx.gbx_tx_end}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.baud_clk}]}
+	} ]]
+waveform format $id -namecolor #00ff00
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.uart_core.i_tx_en}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.uart_core.i_tx_wren}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.uart_core.uart_tx.asynchronous_fifo.fifo_mem.mem[31:0]}]}
+	} ]]
+waveform format $id -radix %x -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.uart_core.o_tx_fifo_level[5:0]}]}
+	} ]]
+waveform format $id -radix %d -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.uart_core.o_tx_fifo_empty}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.uart_core.o_tx_done}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+set id [waveform add -signals [subst  {
+	{[format {wrapper_uart_tb.uart_core.o_tx}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099
+
+waveform xview limits 66865335.131ns 66865386.869ns

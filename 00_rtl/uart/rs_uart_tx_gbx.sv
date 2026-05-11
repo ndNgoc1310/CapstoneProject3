@@ -3,7 +3,7 @@ module rs_uart_tx_gbx
     input logic         clk, rst_n,
     input logic         buf_tx_vld,
     input logic [9:0]   buf_tx_dat,
-    input logic         uart_tx_done,
+    input logic         uart_tx_empty,
 
     output logic        gbx_tx_vld,
     output logic [7:0]  gbx_tx_dat,
@@ -16,8 +16,10 @@ module rs_uart_tx_gbx
     logic           buf_vld;
     logic [9:0]     buf_dat;
 
-    logic           uart_tx_done_prv;
-    logic           uart_rdy_flg;
+    logic           uart_empty_prv;
+    logic           uart_empty_flg;
+
+    logic           uart_empty;
 
     logic           gbx_vld;
     logic [9:0]     gbx_dat;
@@ -43,6 +45,8 @@ module rs_uart_tx_gbx
     assign buf_vld = buf_tx_vld;
     assign buf_dat = buf_tx_dat;
 
+    assign uart_empty = uart_tx_empty;
+
     assign gbx_tx_vld = gbx_vld;
     assign gbx_tx_dat = gbx_dat;
     assign gbx_tx_done = gbx_done;
@@ -51,7 +55,7 @@ module rs_uart_tx_gbx
 
 //--- 1. FSM ---
     typedef enum logic [1:0] {
-        READY,
+        READY1,
         LOAD1,
         READY2,
         LOAD2
@@ -61,12 +65,24 @@ module rs_uart_tx_gbx
 
     always_comb begin
         case (state_cur)
-            READY: begin
-                reg_en          = (uart_rdy_flg & buf_vld) ? 1'b1 : 1'b0;
+            READY1: begin
+                reg_en          = (uart_empty & buf_vld) ? 1'b1 : 1'b0;
                 reg_sel         = 1'b0;
-                cnt_bit_incr    = (uart_rdy_flg & buf_vld) ? 1'b1 : 1'b0;
+                cnt_bit_incr    = (uart_empty & buf_vld) ? 1'b1 : 1'b0;
                 cnt_bit_decr    = 1'b0;
-                cnt_sym_en      = (uart_rdy_flg & buf_vld) ? 1'b1 : 1'b0;
+                cnt_sym_en      = (uart_empty & buf_vld) ? 1'b1 : 1'b0;
+                cnt_sym_clr     = 1'b0;
+                gbx_vld         = 1'b0;
+                gbx_done        = 1'b0;
+                gbx_err         = 1'b0;
+            end
+
+            READY2: begin
+                reg_en          = (uart_empty_flg & buf_vld) ? 1'b1 : 1'b0;
+                reg_sel         = 1'b0;
+                cnt_bit_incr    = (uart_empty_flg & buf_vld) ? 1'b1 : 1'b0;
+                cnt_bit_decr    = 1'b0;
+                cnt_sym_en      = (uart_empty_flg & buf_vld) ? 1'b1 : 1'b0;
                 cnt_sym_clr     = 1'b0;
                 gbx_vld         = 1'b0;
                 gbx_done        = 1'b0;
@@ -86,14 +102,14 @@ module rs_uart_tx_gbx
             end
 
             LOAD2: begin
-                reg_en          = uart_rdy_flg ? 1'b1 : 1'b0;
-                reg_sel         = uart_rdy_flg ? 1'b1 : 1'b0;
+                reg_en          = uart_empty_flg ? 1'b1 : 1'b0;
+                reg_sel         = uart_empty_flg ? 1'b1 : 1'b0;
                 cnt_bit_incr    = 1'b0;
-                cnt_bit_decr    = uart_rdy_flg ? 1'b1 : 1'b0;
+                cnt_bit_decr    = uart_empty_flg ? 1'b1 : 1'b0;
                 cnt_sym_en      = 1'b0;
-                cnt_sym_clr     = (uart_rdy_flg & sym_final) ? 1'b1 : 1'b0;
-                gbx_vld         = uart_rdy_flg ? 1'b1 : 1'b0;
-                gbx_done        = uart_rdy_flg ? 1'b1 : 1'b0;
+                cnt_sym_clr     = (uart_empty_flg & sym_final) ? 1'b1 : 1'b0;
+                gbx_vld         = uart_empty_flg ? 1'b1 : 1'b0;
+                gbx_done        = uart_empty_flg ? 1'b1 : 1'b0;
                 gbx_err         = 1'b0;           
             end
 
@@ -113,29 +129,34 @@ module rs_uart_tx_gbx
 
     always_comb begin
         case (state_cur)
-            READY: begin
-                if (uart_rdy_flg & buf_vld) state_nxt = LOAD1;
-                else                        state_nxt = READY;
+            READY1: begin
+                if (uart_empty & buf_vld)   state_nxt = LOAD1;
+                else                        state_nxt = READY1;
+            end
+
+            READY2: begin
+                if (uart_empty_flg & buf_vld)   state_nxt = LOAD1;
+                else                            state_nxt = READY2;
             end
 
             LOAD1: begin
                 if (cnt_is_16)  state_nxt = LOAD2;
-                else            state_nxt = READY;
+                else            state_nxt = READY2;
             end
 
             LOAD2: begin
-                if (uart_rdy_flg)   state_nxt = READY;
+                if (uart_empty_flg) state_nxt = READY2;
                 else                state_nxt = LOAD2;
             end
 
             default: begin
-                state_nxt = READY;
+                state_nxt = READY2;
             end
         endcase
     end
 
     always_ff @(posedge clk or negedge rst_n) begin
-        if (~rst_n) state_cur   <= READY;    
+        if (~rst_n) state_cur   <= READY1;    
         else        state_cur   <= state_nxt; 
     end
 
@@ -165,12 +186,12 @@ module rs_uart_tx_gbx
 
     assign sym_final   = (cnt_sym_dat == 10'd544);
 
-//--- 4. UART Done Falling Edge Detection ---
+//--- 4. UART Empty Raising Edge Detection ---
     always_ff @(posedge clk, negedge rst_n) begin
-        if (~rst_n) uart_tx_done_prv <= 1'b0;
-        else        uart_tx_done_prv <= uart_tx_done;
+        if (~rst_n) uart_empty_prv <= 1'b0;
+        else        uart_empty_prv <= uart_empty;
     end
-    assign uart_rdy_flg = ~uart_tx_done & uart_tx_done_prv;
+    assign uart_empty_flg = uart_empty & ~uart_empty_prv;
 
 
 //--- 5. Register (Buffer) ---

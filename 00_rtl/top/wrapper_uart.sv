@@ -126,20 +126,26 @@ module wrapper_uart (
     assign LEDR[8] = 1'b0;
     assign LEDR[9] = SW[9];
 
-    assign HEX0 = hex[0];
-    assign HEX1 = hex[1];
-    assign HEX2 = hex[2];
-    assign HEX3 = hex[3];
-    assign HEX4 = hex[4];
-    assign HEX5 = hex[5];
+    assign HEX0 = hex_led[0];
+    assign HEX1 = hex_led[1];
+    assign HEX2 = hex_led[2];
+    assign HEX3 = hex_led[3];
+    assign HEX4 = hex_led[4];
+    assign HEX5 = hex_led[5];
 
     assign uart_rx = GPIO[0];
     assign GPIO[1] = uart_tx;
 
     // RX UART Control
     always_ff @(posedge clk or negedge rst_n) begin
-        if (~rst_n)                         uart_rx_en <= 1'b1;         uart_rx_rden <= 1'b1;  
-        else if (gbx_rx_end | gbx_tx_end)   uart_rx_en <= ~uart_rx_en;  uart_rx_rden <= ~uart_rx_rden;  
+        if (~rst_n) begin
+            uart_rx_en      <= 1'b1;         
+            uart_rx_rden    <= 1'b1;  
+        end
+        else if (gbx_rx_end | gbx_tx_end) begin
+            uart_rx_en      <= ~uart_rx_en;  
+            uart_rx_rden    <= ~uart_rx_rden; 
+        end 
     end
 
     assign uart_tx_wren = gbx_tx_vld;
@@ -317,12 +323,12 @@ module wrapper_uart (
         .rd_inj_mag (10'd0),
         .rd_dec_pos (rd_dec_pos),
         .rd_dec_mag (rd_dec_mag),
-        .hex0       (hex[0]), 
-        .hex1       (hex[1]), 
-        .hex2       (hex[2]),
-        .hex3       (hex[3]), 
-        .hex4       (hex[4]), 
-        .hex5       (hex[5])
+        .hex0       (hex_led[0]), 
+        .hex1       (hex_led[1]), 
+        .hex2       (hex_led[2]),
+        .hex3       (hex_led[3]), 
+        .hex4       (hex_led[4]), 
+        .hex5       (hex_led[5])
     );
 
 endmodule: wrapper_uart

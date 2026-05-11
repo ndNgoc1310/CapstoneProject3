@@ -22,7 +22,7 @@ module rs_uart_tx_gbx
     logic           uart_empty;
 
     logic           gbx_vld;
-    logic [9:0]     gbx_dat;
+    logic [7:0]     gbx_dat;
     logic           gbx_done;
     logic           gbx_end;
     logic           gbx_err;
@@ -145,8 +145,9 @@ module rs_uart_tx_gbx
             end
 
             LOAD2: begin
-                if (uart_empty_flg) state_nxt = READY2;
-                else                state_nxt = LOAD2;
+                if (uart_empty_flg & ~sym_final)        state_nxt = READY2;
+                else if (uart_empty_flg & sym_final)    state_nxt = READY1;
+                else                                    state_nxt = LOAD2;
             end
 
             default: begin

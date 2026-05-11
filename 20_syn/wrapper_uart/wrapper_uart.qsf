@@ -480,6 +480,10 @@ set_global_assignment -name TIMING_ANALYZER_MULTICORNER_ANALYSIS ON
 set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
 set_global_assignment -name VERILOG_INPUT_VERSION SYSTEMVERILOG_2005
 set_global_assignment -name VERILOG_SHOW_LMF_MAPPING_MESSAGES OFF
+set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/uart/rs_uart_tx_gbx.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/uart/rs_uart_tx_buf.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/uart/rs_uart_rx_gbx.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/uart/rs_uart_rx_buf.sv
 set_global_assignment -name SDC_FILE wrapper_uart.sdc
 set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/uart/uart_core.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../00_rtl/top/wrapper_uart.sv

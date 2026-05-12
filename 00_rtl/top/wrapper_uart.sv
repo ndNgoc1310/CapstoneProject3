@@ -115,6 +115,10 @@ module wrapper_uart (
         end
     end
 
+    assign hex_led[3] = 7'b0;
+    assign hex_led[4] = 7'b0;
+    assign hex_led[5] = 7'b0;
+
     assign LEDR[0] = enc_err_led;
     assign LEDR[1] = dec_err_led;
     assign LEDR[2] = 1'b0;
@@ -309,7 +313,7 @@ module wrapper_uart (
         .clk        (clk),
         .rst_n      (rst_n),
         .disp_mode  (disp_mode),
-        .inj_cnt    (corr_cnt),
+        .corr_cnt   (corr_cnt),
         .key_nxt    (key_nxt),
         .key_prv    (key_prv),
         .disp_idx   (disp_idx)
@@ -317,18 +321,12 @@ module wrapper_uart (
 
     hex_mux u_hex_mux (
         .disp_mode  (disp_mode),
-        .inj_cnt    (10'd0), 
         .corr_cnt   (corr_cnt),
-        .rd_inj_pos (10'd0),
-        .rd_inj_mag (10'd0),
         .rd_dec_pos (rd_dec_pos),
         .rd_dec_mag (rd_dec_mag),
         .hex0       (hex_led[0]), 
         .hex1       (hex_led[1]), 
-        .hex2       (hex_led[2]),
-        .hex3       (hex_led[3]), 
-        .hex4       (hex_led[4]), 
-        .hex5       (hex_led[5])
+        .hex2       (hex_led[2])
     );
 
 endmodule: wrapper_uart
@@ -357,28 +355,32 @@ module dec_err_track_ram (
         if (~rst_n) begin
             dec_sym_cnt <= '0;
             corr_cnt <= '0;
-        end else if (dec_vld) begin 
-            if (dec_sop) begin
-                dec_sym_cnt <= 10'd1;
-                if (dec_err_flg) begin
-                    dec_pos_mem[0]  <= 10'd543; 
-                    dec_mag_mem[0]  <= dec_err_mag;
-                    corr_cnt <= 10'd1;
+        end 
+        else begin 
+            if (dec_vld) begin 
+                if (dec_sop) begin
+                    dec_sym_cnt <= 10'd1;
+                    if (dec_err_flg) begin
+                        dec_pos_mem[0]  <= 10'd543; 
+                        dec_mag_mem[0]  <= dec_err_mag;
+                        corr_cnt <= 10'd1;
+                    end else begin
+                        corr_cnt <= 10'd0;
+                    end
                 end else begin
-                    corr_cnt <= 10'd0;
-                end
-            end else begin
-                dec_sym_cnt <= dec_sym_cnt + 10'd1;
-                if (dec_err_flg) begin
-                    dec_pos_mem[corr_cnt]    <= 10'd543 - dec_sym_cnt;
-                    dec_mag_mem[corr_cnt]    <= dec_err_mag;
-                    corr_cnt                 <= corr_cnt + 10'd1;
+                    dec_sym_cnt <= dec_sym_cnt + 10'd1;
+                    if (dec_err_flg) begin
+                        dec_pos_mem[corr_cnt]    <= 10'd543 - dec_sym_cnt;
+                        dec_mag_mem[corr_cnt]    <= dec_err_mag;
+                        corr_cnt                 <= corr_cnt + 10'd1;
+                    end
                 end
             end
 
             rd_pos <= dec_pos_mem[rev_rd_addr];
             rd_mag <= dec_mag_mem[rev_rd_addr];
         end
+
     end
 
     logic [9:0] rev_rd_addr;
@@ -390,7 +392,7 @@ module disp_key_ctrl (
     input  logic        clk,
     input  logic        rst_n,
     input  logic [1:0]  disp_mode,
-    input  logic [9:0]  inj_cnt,
+    input  logic [9:0]  corr_cnt,
     input  logic        key_nxt,
     input  logic        key_prv,
     
@@ -443,14 +445,14 @@ module disp_key_ctrl (
         if (~rst_n) begin
             disp_idx <= 10'd0;
         end else begin
-            if (disp_mode != 2'b00 && inj_cnt > 0) begin
+            if (disp_mode != 2'b00 && corr_cnt > 0) begin
                 if (next_pressed) begin
-                    if (disp_idx < inj_cnt - 10'd1) disp_idx <= disp_idx + 10'd1;
+                    if (disp_idx < corr_cnt - 10'd1) disp_idx <= disp_idx + 10'd1;
                     else disp_idx <= 10'd0;
                 end 
                 else if (prev_pressed) begin
                     if (disp_idx > 0) disp_idx <= disp_idx - 10'd1;
-                    else disp_idx <= inj_cnt - 10'd1;
+                    else disp_idx <= corr_cnt - 10'd1;
                 end
             end else begin
                 disp_idx <= 10'd0;
@@ -461,44 +463,30 @@ endmodule: disp_key_ctrl
 
 module hex_mux (
     input  logic [1:0] disp_mode,
-    input  logic [9:0] inj_cnt,
     input  logic [9:0] corr_cnt,
-    input  logic [9:0] rd_inj_pos,
-    input  logic [9:0] rd_inj_mag,
     input  logic [9:0] rd_dec_pos,
     input  logic [9:0] rd_dec_mag,
     
-    output logic [6:0] hex0, hex1, hex2, hex3, hex4, hex5
+    output logic [6:0] hex0, hex1, hex2
 );
-    logic [9:0] hex_left_val, hex_right_val;
+    logic [9:0] hex_right_val;
     
     always_comb begin
         case (disp_mode)
             2'b00: begin 
-                hex_left_val  = inj_cnt;
                 hex_right_val = corr_cnt;
             end
             2'b01: begin 
-                hex_left_val  = (inj_cnt > 0) ? rd_inj_pos : 10'd0;
                 hex_right_val = (corr_cnt > 0) ? rd_dec_pos : 10'd0;
             end
             2'b10: begin 
-                hex_left_val  = (inj_cnt > 0) ? rd_inj_mag : 10'd0;
                 hex_right_val = (corr_cnt > 0) ? rd_dec_mag : 10'd0;
             end
             default: begin
-                hex_left_val  = '0;
                 hex_right_val = '0;
             end
         endcase
     end
-
-    led_7s_enc_dec_3d Display_Left (
-        .dec_in    (hex_left_val),
-        .enc_out_0 (hex3),
-        .enc_out_1 (hex4),
-        .enc_out_2 (hex5)
-    );
     
     led_7s_enc_dec_3d Display_Right (
         .dec_in    (hex_right_val),

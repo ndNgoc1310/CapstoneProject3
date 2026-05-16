@@ -32,6 +32,7 @@
     { "name": "rst_n", "wave": "1......" },
     { "name": "state_curr", "wave": "=..==..", "data": ["CALC", "DONE", "IDLE"] },
     {},
+    { "name": "sop_in", "wave": "0......" },
     { "name": "vld_in", "wave": "1...0.." },
     { "name": "dat_in", "wave": "====x..", "data": ["R_3", "R_2", "R_1", "R_0"] },
     {},

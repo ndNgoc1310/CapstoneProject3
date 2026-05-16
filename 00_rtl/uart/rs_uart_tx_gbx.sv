@@ -34,7 +34,7 @@ module rs_uart_tx_gbx
     logic           cnt_bit_incr;
     logic           cnt_bit_decr;
     logic [4:0]     cnt_bit_dat;
-    logic           cnt_is_16;
+    logic           bit_is_16;
 
     logic           cnt_sym_en;
     logic           cnt_sym_clr;
@@ -97,7 +97,7 @@ module rs_uart_tx_gbx
                 cnt_sym_en      = 1'b0;
                 cnt_sym_clr     = 1'b0;
                 gbx_vld         = 1'b1;
-                gbx_done        = cnt_is_16 ? 1'b0 : 1'b1;
+                gbx_done        = bit_is_16 ? 1'b0 : 1'b1;
                 gbx_err         = 1'b0;
             end
 
@@ -140,7 +140,7 @@ module rs_uart_tx_gbx
             end
 
             LOAD1: begin
-                if (cnt_is_16)  state_nxt = LOAD2;
+                if (bit_is_16)  state_nxt = LOAD2;
                 else            state_nxt = READY2;
             end
 
@@ -164,10 +164,9 @@ module rs_uart_tx_gbx
 //--- 2. Bit Counter ---
     logic [4:0] cnt_bit_dat_nxt;
     always_comb begin
-        if (cnt_bit_incr & cnt_bit_decr)    cnt_bit_dat_nxt = cnt_bit_dat + 5'd2; 
-        else if (cnt_bit_incr)              cnt_bit_dat_nxt = cnt_bit_dat + 5'd10; 
-        else if (cnt_bit_decr)              cnt_bit_dat_nxt = cnt_bit_dat - 5'd8;
-        else                                cnt_bit_dat_nxt = cnt_bit_dat;
+        if (cnt_bit_incr)       cnt_bit_dat_nxt = cnt_bit_dat + 5'd10; 
+        else if (cnt_bit_decr)  cnt_bit_dat_nxt = cnt_bit_dat - 5'd8;
+        else                    cnt_bit_dat_nxt = cnt_bit_dat;
     end
 
     always_ff @(posedge clk or negedge rst_n) begin
@@ -175,7 +174,7 @@ module rs_uart_tx_gbx
         else        cnt_bit_dat <= cnt_bit_dat_nxt;
     end
 
-    assign cnt_is_16 = (cnt_bit_dat == 5'd16);
+    assign bit_is_16 = (cnt_bit_dat == 5'd16);
 
 //--- 3. Symbol Counter ---
     always_ff @(posedge clk or negedge rst_n) begin

@@ -1,0 +1,79 @@
+
+#
+# Mnemonic Maps
+#
+mmap new  -reuse -name {Boolean as Logic} -radix %b -contents {{%c=FALSE -edgepriority 1 -shape low}
+{%c=TRUE -edgepriority 1 -shape high}}
+mmap new  -reuse -name {Example Map} -radix %x -contents {{%b=11???? -bgcolor orange -label REG:%x -linecolor yellow -shape bus}
+{%x=1F -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=2C -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=* -label %x -linecolor gray -shape bus}}
+
+array unset createdGroup
+array set createdGroup {}
+set id [waveform add -signals [subst  {
+	{[format {top_tb.clk}]}
+	} ]]
+waveform format $id -namecolor #00ff00 -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.rst_n}]}
+	} ]]
+waveform format $id -namecolor #00ff00 -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Control_Unit.state_cur[2:0]}]}
+	} ]]
+waveform format $id -color #ff9900 -namecolor #ff9900 -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.sop_in}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099 -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.vld_in}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099 -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.dat_in[9:0]}]}
+	} ]]
+waveform format $id -color #ff0099 -namecolor #ff0099 -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Counter.cnt_out[9:0]}]}
+	} ]]
+waveform format $id -radix %d -color #00ffff -namecolor #00ffff
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Counter.cnt_par}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Counter.cnt_end}]}
+	} ]]
+waveform format $id -color #00ffff -namecolor #00ffff -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Control_Unit.ctrl}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00 -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Control_Unit.reg_en}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00 -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Control_Unit.sys_rdy}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00 -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.Control_Unit.sys_err}]}
+	} ]]
+waveform format $id -color #ffff00 -namecolor #ffff00 -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.sop_out}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.vld_out}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff -bgcolor #000000
+set id [waveform add -signals [subst  {
+	{[format {top_tb.DUT.Encoder.dat_out[9:0]}]}
+	} ]]
+waveform format $id -color #ff00ff -namecolor #ff00ff -bgcolor #000000
+
+waveform xview limits 5215.319ns 5715.319ns
